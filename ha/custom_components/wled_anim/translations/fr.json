@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Panneau WLED animé",
+        "description": "Choisis l'appareil parmi ceux déjà configurés par l'intégration WLED, et indique l'adresse du hub d'animations.",
+        "data": { "source": "Appareil WLED", "hub_url": "Adresse du hub" }
+      },
+      "manual": {
+        "title": "Adresse manuelle",
+        "data": { "host": "Adresse IP du contrôleur" }
+      },
+      "panel": {
+        "title": "Géométrie de la dalle",
+        "description": "Contrôleur {host}. Chaque géométrie a son propre jeu d'animations. L'aperçu animé se trouve dans la carte Lovelace, un formulaire de configuration ne peut pas afficher d'animation.",
+        "data": {
+          "name": "Nom du panneau",
+          "geometry": "Format (hauteur × largeur)",
+          "mapping": "Câblage",
+          "flip_x": "Miroir horizontal",
+          "flip_y": "Miroir vertical"
+        }
+      }
+    },
+    "error": { "hub_injoignable": "Le hub ne répond pas à cette adresse. Vérifie que l'add-on est démarré." },
+    "abort": { "already_configured": "Ce panneau est déjà configuré." }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Câblage de la dalle",
+        "description": "À calibrer avec wled-player.js --test corners puis --test walk.",
+        "data": { "mapping": "Câblage", "flip_x": "Miroir horizontal", "flip_y": "Miroir vertical" }
+      }
+    }
+  }
+}

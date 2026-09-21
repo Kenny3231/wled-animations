@@ -1,0 +1,38 @@
+{
+  "fps": 40,
+  "base_topic": "wledhub",
+  "discovery_prefix": "homeassistant",
+  "http_port": 8099,
+
+  "_commentaire": "mqtt_host n'est utile QUE hors add-on. Dans l'add-on, le Superviseur fournit le broker automatiquement.",
+  "mqtt_host": "192.168.1.10",
+  "mqtt_port": 1883,
+  "mqtt_user": "",
+  "mqtt_password": "",
+
+  "panels": [
+    {
+      "id": "panel01",
+      "name": "Panneau salon",
+      "host": "192.168.1.50",
+      "port": 21324,
+      "width": 32,
+      "height": 8,
+      "mapping": "serpentine-h",
+      "flip_x": false,
+      "flip_y": false,
+      "brightness": 80,
+      "animation": "f1lights"
+    },
+    {
+      "id": "panel02",
+      "name": "Panneau bureau",
+      "host": "192.168.1.51",
+      "width": 64,
+      "height": 16,
+      "mapping": "serpentine-h",
+      "brightness": 60,
+      "animation": "matrix"
+    }
+  ]
+}

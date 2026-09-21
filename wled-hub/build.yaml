@@ -1,0 +1,10 @@
+# Image de base injectee dans ARG BUILD_FROM du Dockerfile.
+# Requis depuis Supervisor 2026.x : il n'y a plus de valeur par defaut.
+# Base Home Assistant (Alpine) : fournit s6-overlay, with-contenv et bashio,
+# tous les trois utilises par run.sh.
+build_from:
+  aarch64: ghcr.io/home-assistant/aarch64-base:latest
+  amd64: ghcr.io/home-assistant/amd64-base:latest
+  armv7: ghcr.io/home-assistant/armv7-base:latest
+  armhf: ghcr.io/home-assistant/armhf-base:latest
+  i386: ghcr.io/home-assistant/i386-base:latest

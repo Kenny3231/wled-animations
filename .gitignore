@@ -1,0 +1,19 @@
+# Dependances et sorties generees
+node_modules/
+dist/
+gif/
+gif-starter/
+
+# Notes privees : IP et acces SSH du Home Assistant
+HANDOFF-CLAUDE-CODE.md
+Claude outputs/
+
+# Etat local du hub quand il tourne hors conteneur
+wled-hub/icones/
+wled-hub/panels.json
+
+.wrangler/
+*.log
+
+# Caches d'outils locaux
+.impeccable/

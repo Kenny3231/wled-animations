@@ -1,0 +1,20 @@
+{
+  "name": "wled-animations",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Animations pixel pour dalles WLED, rangees par format, avec galerie et catalogue pour le hub Home Assistant",
+  "author": "domo-lab31 - Kenny3231",
+  "scripts": {
+    "test": "node scripts/test.js",
+    "build": "node scripts/build.js",
+    "sync-hub": "node scripts/sync-hub.js",
+    "gif": "node tools/export-gif.js",
+    "player": "node tools/wled-player.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "gifenc": "^1.0.3"
+  }
+}

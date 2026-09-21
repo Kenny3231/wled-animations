@@ -1,0 +1,649 @@
+[
+ {
+  "id": "wledhub_tab",
+  "type": "tab",
+  "label": "WLED Hub",
+  "disabled": false,
+  "info": "Pilotage des panneaux WLED via l'add-on Home Assistant.\nRealise par domo-lab31 - Kenny3231"
+ },
+ {
+  "id": "wh_broker",
+  "type": "mqtt-broker",
+  "name": "Mosquitto HA",
+  "broker": "core-mosquitto",
+  "port": "1883",
+  "clientid": "",
+  "autoConnect": true,
+  "usetls": false,
+  "protocolVersion": "4",
+  "keepalive": "60",
+  "cleansession": true
+ },
+ {
+  "id": "wh_door",
+  "type": "inject",
+  "z": "wledhub_tab",
+  "name": "Porte d'entree ouverte",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 170,
+  "y": 80,
+  "wires": [
+   [
+    "wh_batsig"
+   ]
+  ]
+ },
+ {
+  "id": "wh_batsig",
+  "type": "function",
+  "z": "wledhub_tab",
+  "name": "Bat-signal 12 s",
+  "func": "// flash = joue l'animation puis RESTAURE ce qui tournait avant.\n// Rien a memoriser cote Node-RED.\nmsg.topic = 'wledhub/panel01/flash';\nmsg.payload = { animation: 'batsignal', seconds: 12 };\nreturn msg;",
+  "outputs": 1,
+  "noerr": 0,
+  "x": 420,
+  "y": 80,
+  "wires": [
+   [
+    "wh_out"
+   ]
+  ]
+ },
+ {
+  "id": "wh_pick",
+  "type": "inject",
+  "z": "wledhub_tab",
+  "name": "Choisir une animation",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 170,
+  "y": 160,
+  "wires": [
+   [
+    "wh_setanim"
+   ]
+  ]
+ },
+ {
+  "id": "wh_setanim",
+  "type": "function",
+  "z": "wledhub_tab",
+  "name": "animation = matrix",
+  "func": "// Accepte l'identifiant (matrix) ou le nom lisible (Matrix - pluie digitale)\nmsg.topic = 'wledhub/panel01/set/animation';\nmsg.payload = 'matrix';\nreturn msg;",
+  "outputs": 1,
+  "noerr": 0,
+  "x": 430,
+  "y": 160,
+  "wires": [
+   [
+    "wh_out"
+   ]
+  ]
+ },
+ {
+  "id": "wh_msgin",
+  "type": "inject",
+  "z": "wledhub_tab",
+  "name": "Message personnalise",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "topic": "",
+  "payload": "BIENVENUE DAVID",
+  "payloadType": "str",
+  "x": 170,
+  "y": 240,
+  "wires": [
+   [
+    "wh_msg"
+   ]
+  ]
+ },
+ {
+  "id": "wh_msg",
+  "type": "function",
+  "z": "wledhub_tab",
+  "name": "Texte puis flash 15 s",
+  "func": "// Deux messages : on pose le texte, puis on declenche le flash.\nconst texte = msg.payload;\nreturn [[\n  { topic:'wledhub/panel01/set/text', payload: texte },\n  { topic:'wledhub/panel01/flash', payload:{ animation:'message', seconds:15 } }\n]];",
+  "outputs": 1,
+  "noerr": 0,
+  "x": 440,
+  "y": 240,
+  "wires": [
+   [
+    "wh_out"
+   ]
+  ]
+ },
+ {
+  "id": "wh_bri",
+  "type": "inject",
+  "z": "wledhub_tab",
+  "name": "Luminosite nuit (15 %)",
+  "props": [
+   {
+    "p": "payload"
+   },
+   {
+    "p": "topic",
+    "vt": "str"
+   }
+  ],
+  "repeat": "",
+  "topic": "wledhub/panel01/set/brightness",
+  "payload": "15",
+  "payloadType": "str",
+  "x": 180,
+  "y": 320,
+  "wires": [
+   [
+    "wh_out"
+   ]
+  ]
+ },
+ {
+  "id": "wh_off",
+  "type": "inject",
+  "z": "wledhub_tab",
+  "name": "Eteindre",
+  "props": [
+   {
+    "p": "payload"
+   },
+   {
+    "p": "topic",
+    "vt": "str"
+   }
+  ],
+  "repeat": "",
+  "topic": "wledhub/panel01/set/power",
+  "payload": "OFF",
+  "payloadType": "str",
+  "x": 140,
+  "y": 380,
+  "wires": [
+   [
+    "wh_out"
+   ]
+  ]
+ },
+ {
+  "id": "wh_out",
+  "type": "mqtt out",
+  "z": "wledhub_tab",
+  "name": "vers le hub",
+  "topic": "",
+  "qos": "0",
+  "retain": "",
+  "broker": "wh_broker",
+  "x": 700,
+  "y": 200,
+  "wires": []
+ },
+ {
+  "id": "wh_state",
+  "type": "mqtt in",
+  "z": "wledhub_tab",
+  "name": "etat du panneau",
+  "topic": "wledhub/+/state",
+  "qos": "0",
+  "datatype": "json",
+  "broker": "wh_broker",
+  "x": 180,
+  "y": 460,
+  "wires": [
+   [
+    "wh_dbg"
+   ]
+  ]
+ },
+ {
+  "id": "wh_dbg",
+  "type": "debug",
+  "z": "wledhub_tab",
+  "name": "etat",
+  "active": true,
+  "complete": "payload",
+  "x": 450,
+  "y": 460,
+  "wires": []
+ },
+ {
+  "id": "wledcompo_tab",
+  "type": "tab",
+  "label": "WLED Composition",
+  "disabled": false,
+  "info": "Composition d'un panneau WLED depuis Node-RED, en HTTP.\nRealise par domo-lab31 - Kenny3231\n\nTout passe par POST /api/panel/<id> sur le hub. Le noeud\n« adresse du hub » est le SEUL endroit ou changer l'IP.\n\nChamps utiles :\n  compose_text, text2   texte des zones libres\n  icons                 [1431, 510] ou \"1431,510\", 3 maxi\n  icon_side             left | center | right (1 icone)\n  bg_mode               none | solid | gradient | rainbow\n  bg, bg_to             [r,g,b]\n  bg_axis, bg_anim      h|v, 0 a 2\n  text_mode             solid | gradient | rainbow\n  text_color, text_to   [r,g,b]\n  text_anim, speed\n\nDeux icones se centrent, trois se repartissent : icon_side\nne sert que lorsqu'il y en a une seule. Les icones LaMetric\nfont 8x8, donc uniquement sur une dalle de hauteur 8."
+ },
+ {
+  "id": "i_c1",
+  "type": "inject",
+  "z": "wledcompo_tab",
+  "name": "Composition complete",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": false,
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 160,
+  "y": 80,
+  "wires": [
+   [
+    "f_c1"
+   ]
+  ]
+ },
+ {
+  "id": "f_c1",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "Composition complete",
+  "func": "// Fond degrade qui glisse, texte en degrade, une icone a gauche.\nmsg.chemin = '/api/panel/anim_panel_bureau';\nmsg.payload = {\n    animation: 'compose',\n    icons: [1431],\n    icon_side: 'left',\n    compose_text: 'SALUT',\n    bg_mode: 'gradient', bg: [0, 40, 90], bg_to: [90, 0, 60],\n    bg_axis: 'h', bg_anim: 0.2,\n    text_mode: 'gradient', text_color: [255, 255, 255], text_to: [255, 200, 0]\n};\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 430,
+  "y": 80,
+  "wires": [
+   [
+    "adresse"
+   ]
+  ]
+ },
+ {
+  "id": "i_c2",
+  "type": "inject",
+  "z": "wledcompo_tab",
+  "name": "Deux icones, centrees",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": false,
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 160,
+  "y": 140,
+  "wires": [
+   [
+    "f_c2"
+   ]
+  ]
+ },
+ {
+  "id": "f_c2",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "Deux icones, centrees",
+  "func": "// Deux icones se collent et se centrent : le texte va sur les bords.\nmsg.chemin = '/api/panel/anim_panel_bureau';\nmsg.payload = { animation: 'compose', icons: [1431, 510],\n                compose_text: 'A', text2: 'B' };\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 430,
+  "y": 140,
+  "wires": [
+   [
+    "adresse"
+   ]
+  ]
+ },
+ {
+  "id": "i_c3",
+  "type": "inject",
+  "z": "wledcompo_tab",
+  "name": "Trois icones",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": false,
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 160,
+  "y": 200,
+  "wires": [
+   [
+    "f_c3"
+   ]
+  ]
+ },
+ {
+  "id": "f_c3",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "Trois icones",
+  "func": "// Trois icones occupent toute la largeur : plus de place pour du texte.\nmsg.chemin = '/api/panel/anim_panel_bureau';\nmsg.payload = { animation: 'compose', icons: [1431, 510, 1078] };\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 430,
+  "y": 200,
+  "wires": [
+   [
+    "adresse"
+   ]
+  ]
+ },
+ {
+  "id": "i_c4",
+  "type": "inject",
+  "z": "wledcompo_tab",
+  "name": "Texte seul, fond uni",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": false,
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 160,
+  "y": 260,
+  "wires": [
+   [
+    "f_c4"
+   ]
+  ]
+ },
+ {
+  "id": "f_c4",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "Texte seul, fond uni",
+  "func": "// Sans icone : le texte occupe toute la dalle.\nmsg.chemin = '/api/panel/anim_panel_bureau';\nmsg.payload = { animation: 'compose', icons: [],\n                compose_text: 'BIENVENUE',\n                bg_mode: 'solid', bg: [4, 10, 20],\n                text_mode: 'rainbow', text_anim: 0.3 };\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 430,
+  "y": 260,
+  "wires": [
+   [
+    "adresse"
+   ]
+  ]
+ },
+ {
+  "id": "i_c5",
+  "type": "inject",
+  "z": "wledcompo_tab",
+  "name": "Retirer les icones",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": false,
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 160,
+  "y": 320,
+  "wires": [
+   [
+    "f_c5"
+   ]
+  ]
+ },
+ {
+  "id": "f_c5",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "Retirer les icones",
+  "func": "msg.chemin = '/api/panel/anim_panel_bureau';\nmsg.payload = { icons: [] };\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 430,
+  "y": 320,
+  "wires": [
+   [
+    "adresse"
+   ]
+  ]
+ },
+ {
+  "id": "i_c6",
+  "type": "inject",
+  "z": "wledcompo_tab",
+  "name": "Bat-signal 12 s puis retour",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": false,
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 160,
+  "y": 380,
+  "wires": [
+   [
+    "f_c6"
+   ]
+  ]
+ },
+ {
+  "id": "f_c6",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "Bat-signal 12 s puis retour",
+  "func": "// Le hub restaure tout seul l'etat precedent a la fin.\nmsg.chemin = '/api/panel/anim_panel_bureau/flash';\nmsg.payload = { animation: 'batsignal', seconds: 12 };\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 430,
+  "y": 380,
+  "wires": [
+   [
+    "adresse"
+   ]
+  ]
+ },
+ {
+  "id": "i_c7",
+  "type": "inject",
+  "z": "wledcompo_tab",
+  "name": "Chercher une icone LaMetric",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": false,
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 160,
+  "y": 440,
+  "wires": [
+   [
+    "f_c7"
+   ]
+  ]
+ },
+ {
+  "id": "f_c7",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "Chercher une icone LaMetric",
+  "func": "// Reponse : { icones: [{id, nom, anime, vignette}], total }\nmsg.methode = 'GET';\nmsg.chemin = '/api/icons?q=' + encodeURIComponent('batman') + '&nb=10';\nmsg.payload = null;\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 430,
+  "y": 440,
+  "wires": [
+   [
+    "adresse"
+   ]
+  ]
+ },
+ {
+  "id": "i_c8",
+  "type": "inject",
+  "z": "wledcompo_tab",
+  "name": "Lire l'etat des panneaux",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": false,
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 160,
+  "y": 500,
+  "wires": [
+   [
+    "f_c8"
+   ]
+  ]
+ },
+ {
+  "id": "f_c8",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "Lire l'etat des panneaux",
+  "func": "msg.methode = 'GET';\nmsg.chemin = '/api/panels';\nmsg.payload = null;\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 430,
+  "y": 500,
+  "wires": [
+   [
+    "adresse"
+   ]
+  ]
+ },
+ {
+  "id": "adresse",
+  "type": "function",
+  "z": "wledcompo_tab",
+  "name": "adresse du hub",
+  "func": "// LE SEUL endroit ou changer l'adresse du hub.\nconst HUB = 'http://192.168.32.130:8099';\n\nmsg.url = HUB + msg.chemin;\nmsg.method = msg.methode || 'POST';\ndelete msg.chemin; delete msg.methode;\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 690,
+  "y": 290,
+  "wires": [
+   [
+    "requete"
+   ]
+  ]
+ },
+ {
+  "id": "requete",
+  "type": "http request",
+  "z": "wledcompo_tab",
+  "name": "vers le hub",
+  "method": "use",
+  "ret": "obj",
+  "paytoqs": "ignore",
+  "url": "",
+  "tls": "",
+  "persist": false,
+  "proxy": "",
+  "insecureHTTPParser": false,
+  "authType": "",
+  "senderr": false,
+  "headers": [],
+  "x": 890,
+  "y": 290,
+  "wires": [
+   [
+    "reponse"
+   ]
+  ]
+ },
+ {
+  "id": "reponse",
+  "type": "debug",
+  "z": "wledcompo_tab",
+  "name": "reponse du hub",
+  "active": true,
+  "tosidebar": true,
+  "console": false,
+  "tostatus": false,
+  "complete": "payload",
+  "targetType": "msg",
+  "statusVal": "",
+  "statusType": "auto",
+  "x": 1090,
+  "y": 290,
+  "wires": []
+ }
+]

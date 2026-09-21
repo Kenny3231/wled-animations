@@ -1,0 +1,50 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Animated WLED panel",
+        "description": "Pick a device already configured by the WLED integration, then give the animation hub address.",
+        "data": {
+          "source": "WLED device",
+          "hub_url": "Hub address"
+        }
+      },
+      "manual": {
+        "title": "Manual address",
+        "data": {
+          "host": "Controller IP address"
+        }
+      },
+      "panel": {
+        "title": "Panel geometry",
+        "description": "Controller {host}. Each geometry has its own animation pack. The animated preview lives in the Lovelace card: a config form cannot display animations.",
+        "data": {
+          "name": "Panel name",
+          "geometry": "Format (height x width)",
+          "mapping": "Wiring",
+          "flip_x": "Flip horizontally",
+          "flip_y": "Flip vertically"
+        }
+      }
+    },
+    "error": {
+      "hub_injoignable": "The hub is not answering at this address. Check that the add-on is running."
+    },
+    "abort": {
+      "already_configured": "This panel is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Panel wiring",
+        "description": "Calibrate with wled-player.js --test corners then --test walk.",
+        "data": {
+          "mapping": "Wiring",
+          "flip_x": "Flip horizontally",
+          "flip_y": "Flip vertically"
+        }
+      }
+    }
+  }
+}

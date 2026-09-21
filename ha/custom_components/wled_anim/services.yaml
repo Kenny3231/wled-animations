@@ -1,0 +1,28 @@
+flash:
+  name: Animation temporaire
+  description: >-
+    Joue une animation pendant N secondes puis restaure ce qui tournait
+    avant, etat eteint compris. Rien a memoriser dans l'automatisation.
+  fields:
+    panel:
+      name: Panneau
+      description: Identifiant du panneau (ex. panneau_bureau)
+      required: true
+      selector:
+        text:
+    animation:
+      name: Animation
+      description: Identifiant ou nom de l'animation (ex. batsignal)
+      required: true
+      example: batsignal
+      selector:
+        text:
+    seconds:
+      name: Duree
+      description: Duree en secondes avant retour a l'etat precedent
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 600
+          unit_of_measurement: s
