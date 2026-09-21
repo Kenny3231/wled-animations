@@ -43,9 +43,9 @@ fonctionne hors ligne.
 ## Le site et le catalogue
 
 Chaque push sur `main` est vérifié par GitHub Actions (`npm test` puis
-`npm run build`). Cloudflare Pages, branché sur le dépôt, reconstruit et
-publie `dist/` : la galerie en page d'accueil, et à côté le catalogue que
-le hub ira lire.
+`npm run build`), et **seulement si tout passe**, `dist/` est publié sur
+Cloudflare Pages : la galerie en page d'accueil, et à côté le catalogue que
+le hub ira lire. Une animation cassée n'arrive donc jamais sur le site.
 
 ```
 index.json                      { "32x8": "packs/32x8/index.json" }
@@ -59,19 +59,25 @@ de `catalogFor()`. Le hub compare `engine.sha256` pour savoir s'il doit
 retélécharger le moteur. Le catalogue est servi avec CORS ouvert : la carte
 Lovelace peut le lire directement depuis le navigateur.
 
-### Brancher Cloudflare Pages (une seule fois)
+### Cloudflare Pages
 
-Tableau de bord Cloudflare → **Workers & Pages** → **Create** → **Pages** →
-**Connect to Git** → choisir le dépôt `wled-animations`, puis :
+Le projet Pages `wled-animations` est branché sur ce dépôt, comme
+`avatar-explorer` et `lametric-icon-picker` : Cloudflare reconstruit le site
+à chaque push, sans aucun jeton stocké dans GitHub.
 
 | Réglage | Valeur |
 |---|---|
 | Production branch | `main` |
-| Build command | `npm run build` |
+| Build command | `npm test && npm run build` |
 | Build output directory | `dist` |
 
-La version de Node est lue dans `.node-version`. Aucun jeton Cloudflare
-n'est stocké dans GitHub.
+Les tests passent **avant** le build : s'ils échouent, Cloudflare ne publie
+rien et l'ancienne version reste en ligne. La version de Node est lue dans
+`.node-version`.
+
+L'application GitHub de Cloudflare doit avoir accès au dépôt : sur GitHub,
+*Settings → Applications → Cloudflare Workers and Pages → Configure →
+Repository access*.
 
 ### Ajouter une animation
 
