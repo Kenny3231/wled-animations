@@ -66,7 +66,7 @@ details.opts summary::-webkit-details-marker{display:none}
 .opts-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:45;width:min(340px,calc(100vw - 32px));
   background:var(--surface);border:1px solid var(--line2);border-radius:var(--radius);padding:14px;
   display:grid;gap:12px;box-shadow:0 18px 40px rgba(0,0,0,.5)}
-.opts-panel h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.opts-panel h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .opt{display:grid;grid-template-columns:84px 1fr 44px;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
 .opt input[type=range]{width:100%;accent-color:var(--accent)}
 .opt output{font-family:var(--mono);font-size:12px;color:var(--txt);text-align:right}
@@ -192,14 +192,14 @@ footer.site code{font-family:var(--mono);font-size:11.5px}
       <details class="opts" id="opts">
         <summary>Réglages</summary>
         <div class="opts-panel">
-          <h3>Aperçu</h3>
+          <h2>Aperçu</h2>
           <label class="opt">Vitesse<input type="range" id="speed" min="20" max="200" value="100"><output id="speedV">1.0×</output></label>
           <label class="opt">Luminosité<input type="range" id="bright" min="20" max="160" value="100"><output id="brightV">100%</output></label>
-          <h3>Export GIF</h3>
+          <h2>Export GIF</h2>
           <label class="opt">Taille<select id="exScale"><option value="1">32 × 8 — natif</option><option value="2">64 × 16 — dalle 16×64</option><option value="3">96 × 24</option></select><span></span></label>
           <label class="opt">Cadence<select id="exFps"><option value="20">20 fps</option><option value="25" selected>25 fps</option><option value="50">50 fps</option></select><span></span></label>
           <label class="opt">Palette<select id="exColors"><option value="64">64 couleurs</option><option value="128" selected>128 couleurs</option><option value="256">256 couleurs</option></select><span></span></label>
-          <h3>Sélection</h3>
+          <h2>Sélection</h2>
           <div class="row"><button id="allBtn">Tout ce qui est affiché</button><button id="noneBtn">Tout effacer</button></div>
         </div>
       </details>
