@@ -87,7 +87,7 @@ if (!S) {
         last: Date.now(),
         bright: CFG.defaultBright,
         single: null,                 // id force, ou null pour le carrousel
-        opts: { max: { num: '33' } }
+        opts: { max: { num: '3' } }
     };
     S.pkt[0] = 4;                     // DNRGB
     S.pkt[1] = CFG.timeout;

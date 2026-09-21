@@ -63,7 +63,7 @@ const CONFIG = {
 
   /* Options par animation */
   options: {
-    max: { num: '33' },   // '33', '1' ou '3'
+    max: { num: '3' },    // '3' en 2026, '33' ou '1'
   },
 
   loop: true,             // reboucler le carrousel indefiniment

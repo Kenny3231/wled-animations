@@ -2,7 +2,7 @@
 
 Réalisé par domo-lab31 - Kenny3231
 
-Diffuse les 140 animations vers tes panneaux WLED en UDP temps réel, et les
+Diffuse les 241 animations vers tes panneaux WLED en UDP temps réel, et les
 expose dans Home Assistant comme des entités natives.
 
 ---
@@ -19,7 +19,7 @@ pour chaque panneau :
 | Entité | Rôle |
 |---|---|
 | `switch.<panneau>_alimentation` | démarre / arrête le flux |
-| `select.<panneau>_animation` | les 140 animations en liste déroulante |
+| `select.<panneau>_animation` | toutes les animations en liste déroulante |
 | `number.<panneau>_luminosite` | 0 à 100 % |
 | `text.<panneau>_message` | texte de l'animation « Message libre » |
 
@@ -245,7 +245,7 @@ multiplié d'autant.
   1444 et 196 octets aux index 0, 480 et 960 — toutes sous la MTU de 1500 et
   sous la limite de 489 LEDs par trame. Un paquet unique aurait été hors
   spécification et fragmenté par IP.
-- API HTTP : liste des 140 animations, changement d'animation, de luminosité
+- API HTTP : liste des animations, changement d'animation, de luminosité
   et de message vérifiés sur les deux panneaux.
 - **Flash** : panneau sur `matrix`, flash `batsignal` 2 s, retour automatique
   sur `matrix` confirmé.

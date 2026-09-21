@@ -10,6 +10,8 @@
      - table des durees GIF coherente avec les animations existantes
      - 20 s de rendu a 25 fps, pour chaque valeur d'option : aucune valeur
        NaN ni Infinity, aucune exception
+     - les animations declarees en boucle exacte reviennent a l'identique
+       apres un cycle (sinon le GIF saute au raccord)
      - le moteur reste chargeable dans un navigateur (pas de require)
      - la copie embarquee dans l'add-on est identique a la source
    ═══════════════════════════════════════════════════════════════════════ */
@@ -113,6 +115,23 @@ function testerPack(geo){
     }
   }
   if(!rendu) ok(`${SECONDES} s de rendu par animation et par option, aucune valeur invalide`);
+
+  /* boucle exacte : une animation qui declare clip.exact doit revenir a
+     l'identique apres un cycle, sinon son GIF saute au raccord */
+  let boucle = 0, nExact = 0;
+  for(const a of L.ANIMS){
+    if(!a.clip) continue;
+    if(!(a.clip.seconds > 0) || typeof a.clip.exact !== 'boolean'){ ko(`${a.id} : clip invalide`); boucle++; continue; }
+    if(!a.clip.exact || a.init) continue;
+    nExact++;
+    const b1 = L.newBuf(), b2 = L.newBuf(), o = a.opt ? { [a.opt.key]: a.opt.def } : {};
+    for(const t0 of [0.04, 0.52, 1.37]){
+      a.render(b1, t0, 0.04, {}, o); a.render(b2, t0 + a.clip.seconds, 0.04, {}, o);
+      let ecart = 0; for(let i = 0; i < b1.length; i++) ecart = Math.max(ecart, Math.abs(b1[i] - b2[i]));
+      if(ecart > 0.5){ ko(`${a.id} : ne boucle pas exactement sur ${a.clip.seconds} s (écart ${ecart.toFixed(1)} à t=${t0})`); boucle++; break; }
+    }
+  }
+  if(!boucle) ok(`${nExact} boucles exactes vérifiées image à image`);
 
   /* compatibilite navigateur */
   const src = fs.readFileSync(file, 'utf8');

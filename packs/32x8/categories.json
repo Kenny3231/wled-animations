@@ -7,6 +7,56 @@
       "animations": ["f1lights", "max", "rbr", "drs", "pitstop", "podium", "tyres", "sectors", "lightsout", "teamradio", "champion", "gridpos", "fastlap", "safetycar", "redflag", "greenflag", "blueflag", "chequered", "fuelgauge", "speedtrap", "gearshift", "revlights", "laptimer", "overtake", "rainrace", "pitlimiter", "constructors", "pitboard"]
     },
     {
+      "id": "f1-pilotes",
+      "name": "F1 2026 · Pilotes",
+      "animations": ["norris", "piastri", "leclerc", "hamilton", "hadjar", "russell", "antonelli", "alonso", "stroll", "gasly", "colapinto", "albon", "sainz", "lawson", "lindblad", "ocon", "bearman", "hulkenberg", "bortoleto", "perez", "bottas"]
+    },
+    {
+      "id": "f1-ecuries",
+      "name": "F1 2026 · Écuries",
+      "animations": ["mclaren", "ferrari", "mercedes", "astonmartin", "alpine", "williams", "racingbulls", "haas", "audi", "cadillac", "grille2026"]
+    },
+    {
+      "id": "top14",
+      "name": "Top 14 & Europe",
+      "animations": ["top14", "championscup", "ubb", "toulon", "clermont", "larochelle", "racing92", "stadefrancais", "castres", "pau", "bayonne", "lyon", "montpellier", "perpignan", "vannes"]
+    },
+    {
+      "id": "rugby",
+      "name": "Rugby / Stade Toulousain",
+      "animations": ["stade", "essai", "scoreboard", "haka", "dropgoal", "melee", "matchclock", "carton", "brennus", "supporters"]
+    },
+    {
+      "id": "iron-man",
+      "name": "Iron Man",
+      "animations": ["ironman", "arcreactor", "repulsor", "unibeam", "ironflight", "suitup", "nanotech", "jarvis", "ironhud", "iamironman", "hotrod", "ironlegion"]
+    },
+    {
+      "id": "super-heros",
+      "name": "Super-héros",
+      "animations": ["marvel", "thor", "spidey", "shield", "hulk", "infinity", "batsignal", "superman", "speedster", "venom", "groot", "wakanda", "antman"]
+    },
+    {
+      "id": "deadpool",
+      "name": "Deadpool",
+      "animations": ["deadpool", "chimichanga", "regen", "dpeyes", "bullets", "taco"]
+    },
+    {
+      "id": "jeu-video",
+      "name": "Jeu vidéo",
+      "animations": ["overwatch", "payload", "ultimate", "healthbar", "respawn", "headshot", "loading", "achievement", "combo", "manabar", "levelup", "pacman", "invaders", "trophy", "gg", "victoire", "defaite", "gameover", "pressstart", "afk", "live", "blocs", "snake", "pong", "briques", "creeper", "vies", "ko", "oneup", "butin", "boss", "ping", "clavier", "ace"]
+    },
+    {
+      "id": "home-assistant",
+      "name": "Maison & notifications",
+      "animations": ["sonnette", "porte", "courrier", "colis", "lessive", "poubelles", "bienvenue", "bonnenuit", "reveil", "alarme", "fenetre", "cafe", "anniversaire", "appel", "fuite", "message", "compose"]
+    },
+    {
+      "id": "meteo",
+      "name": "Météo",
+      "animations": ["rainstorm", "storm", "aurora", "meteor", "soleil", "nuageux", "pluie", "neige", "orage", "brouillard", "vent"]
+    },
+    {
       "id": "matrix",
       "name": "Matrix",
       "animations": ["matrix", "matrixblue", "matrixred", "matrixgold", "wakeup", "pills", "glitch", "binary", "decrypt", "terminal"]
@@ -17,34 +67,9 @@
       "animations": ["manga", "sharingan", "kamehameha", "speedlines", "powerup", "chibi", "rasengan", "bijuu", "jollyroger", "titanwings", "scouter", "sakura"]
     },
     {
-      "id": "super-heros",
-      "name": "Super-héros",
-      "animations": ["marvel", "arcreactor", "thor", "spidey", "shield", "hulk", "infinity", "batsignal", "superman", "speedster", "venom", "groot", "wakanda", "antman"]
-    },
-    {
-      "id": "deadpool",
-      "name": "Deadpool",
-      "animations": ["deadpool", "chimichanga", "regen", "dpeyes", "bullets", "taco"]
-    },
-    {
-      "id": "jeu-video",
-      "name": "Jeu vidéo",
-      "animations": ["overwatch", "payload", "ultimate", "healthbar", "respawn", "headshot", "loading", "achievement", "combo", "manabar", "levelup", "pacman", "invaders", "trophy"]
-    },
-    {
-      "id": "rugby",
-      "name": "Rugby / Stade Toulousain",
-      "animations": ["stade", "essai", "scoreboard", "haka", "dropgoal", "melee", "matchclock", "carton", "brennus", "supporters"]
-    },
-    {
       "id": "fetes",
       "name": "Saisons et fêtes",
       "animations": ["snow", "xmastree", "fireworks", "halloween", "hearts", "autumn", "confetti", "sunrise"]
-    },
-    {
-      "id": "meteo",
-      "name": "Météo",
-      "animations": ["rainstorm", "storm", "aurora", "meteor"]
     },
     {
       "id": "utilitaires",
@@ -55,11 +80,6 @@
       "id": "ambiance",
       "name": "Ambiance et abstrait",
       "animations": ["fire", "fireblue", "firegreen", "plasma", "plasmacool", "starfield", "starwarp", "rainbow", "breathe", "sinewave", "ripple", "lavalamp", "kitt", "spiral", "tunnel", "dna", "bubbles", "pulsegrid", "testbars", "scanline", "noisefield"]
-    },
-    {
-      "id": "home-assistant",
-      "name": "Home Assistant",
-      "animations": ["message", "compose"]
     }
   ]
 }

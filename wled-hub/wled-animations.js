@@ -80,6 +80,35 @@ const F7 = {
  '9':['01110','10001','10001','01111','00001','00010','01100'],
  'S':['01111','10000','10000','01110','00001','00001','11110'],
  'T':['11111','00100','00100','00100','00100','00100','00100'],
+ /* Lot 4 : le reste de l'alphabet, pour les titres en grand. Aucune
+    animation anterieure n'appelait text7 avec une lettre : rien ne change. */
+ 'A':['01110','10001','10001','11111','10001','10001','10001'],
+ 'B':['11110','10001','10001','11110','10001','10001','11110'],
+ 'C':['01110','10001','10000','10000','10000','10001','01110'],
+ 'D':['11110','10001','10001','10001','10001','10001','11110'],
+ 'E':['11111','10000','10000','11110','10000','10000','11111'],
+ 'F':['11111','10000','10000','11110','10000','10000','10000'],
+ 'G':['01110','10001','10000','10111','10001','10001','01111'],
+ 'H':['10001','10001','10001','11111','10001','10001','10001'],
+ 'I':['01110','00100','00100','00100','00100','00100','01110'],
+ 'J':['00111','00010','00010','00010','00010','10010','01100'],
+ 'K':['10001','10010','10100','11000','10100','10010','10001'],
+ 'L':['10000','10000','10000','10000','10000','10000','11111'],
+ 'M':['10001','11011','10101','10101','10001','10001','10001'],
+ 'N':['10001','10001','11001','10101','10011','10001','10001'],
+ 'O':['01110','10001','10001','10001','10001','10001','01110'],
+ 'P':['11110','10001','10001','11110','10000','10000','10000'],
+ 'Q':['01110','10001','10001','10001','10101','10010','01101'],
+ 'R':['11110','10001','10001','11110','10100','10010','10001'],
+ 'U':['10001','10001','10001','10001','10001','10001','01110'],
+ 'V':['10001','10001','10001','10001','10001','01010','00100'],
+ 'W':['10001','10001','10001','10101','10101','10101','01010'],
+ 'X':['10001','10001','01010','00100','01010','10001','10001'],
+ 'Y':['10001','10001','01010','00100','00100','00100','00100'],
+ 'Z':['11111','00001','00010','00100','01000','10000','11111'],
+ 'É':['00010','11111','10000','11110','10000','10000','11111'],
+ '!':['00100','00100','00100','00100','00100','00000','00100'],
+ '.':['00000','00000','00000','00000','00000','01100','01100'],
 };
 
 const tw3 = s => s.length*4;
@@ -266,9 +295,9 @@ ANIMS.push({
   desc:"Numéro géant en 5×7 avec halo rouge Red Bull qui pulse, nom qui défile, et un balayage damier qui traverse la dalle à chaque tour de boucle.",
   fx:'Pulse + défilement + wipe damier', speed:'Cycle 9 s',
   cols:[['#0e1f4a','Navy RBR'],['#ffffff','Chiffre'],['#e10600','Halo rouge']],
-  opt:{key:'num', label:'N°', values:['33','1','3'], def:'33'},
+  opt:{key:'num', label:'N°', values:['3','33','1'], def:'3'},   // 3 en 2026
   render(b,t,dt,st,o){
-    const num = (o && o.num) || '33';
+    const num = (o && o.num) || '3';
     // fond navy + reflet diagonal
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){
       const g = 1-y/12;
@@ -2507,6 +2536,1420 @@ ANIMS.push({
     }
   }
 });
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LOT 4 — F1 2026, Top 14, Iron Man, jeux PC, maison, meteo
+   Realise par domo-lab31 - Kenny3231
+
+   Toutes les animations de ce lot ne dependent que de p = t % C et
+   d'oscillateurs cales sur C : elles declarent un `clip` exact et leur GIF
+   boucle sans fondu. L'aleatoire passe par rnd(), un hachage entier
+   deterministe, jamais par Math.random().
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/** Declaration d'une animation periodique sur C secondes. */
+function P(id,name,tag,desc,fx,C,cols,render){
+  ANIMS.push({id,name,tag,desc,fx,speed:'Cycle '+String(C).replace('.',',')+' s',cols,render,
+              clip:{seconds:C,exact:true}});
+}
+/** Pseudo-aleatoire deterministe dans [0,1) a partir de deux entiers. */
+function rnd(a,b){
+  let n=((a|0)*374761393+(b|0)*668265263)|0;
+  n=Math.imul(n^(n>>>13),1274126177);
+  return ((n^(n>>>16))>>>0)/4294967296;
+}
+/** Phase 0..1 d'un motif de periode ~per, repete un nombre entier de fois
+    par cycle C : la boucle reste exacte quel que soit C. */
+function cyc(p,C,per){ const n=Math.max(1,Math.round(C/per)); return (p/C*n)%1; }
+/** Duree arrondie au 0,2 s : un nombre entier d'images a 20, 25 et 50 fps. */
+const q02=s=>Math.max(0.2,Math.round(s*5)/5);
+const tw7=s=>s.length*6-1;
+const hex=c=>'#'+c.map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+const sansAccents=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'');
+const titre=s=>s.toLowerCase().replace(/(^|[\s-])\S/g,m=>m.toUpperCase());
+
+/** Pixels allumes d'un texte, en police 3x5 ou 5x7. */
+function cells3(s,x,y){
+  const r=[]; let cx=x;
+  for(const ch of s.toUpperCase()){
+    const g=F3[ch]||F3[' '];
+    for(let i=0;i<5;i++)for(let j=0;j<3;j++)if(g[i][j]==='1')r.push([cx+j,y+i]);
+    cx+=4;
+  }
+  return r;
+}
+function cells7(s,x,y){
+  const r=[]; let cx=x;
+  for(const ch of s.toUpperCase()){
+    const g=F7[ch];
+    if(g)for(let i=0;i<7;i++)for(let j=0;j<5;j++)if(g[i][j]==='1')r.push([cx+j,y+i]);
+    cx+=6;
+  }
+  return r;
+}
+/** Encre des pixels, avec un contour sombre optionnel pour rester lisible
+    sur un motif charge. x0..x1 bornent la zone d'affichage. */
+function ink(b,cells,col,out,x0,x1,a){
+  x0=x0==null?0:x0; x1=x1==null?W-1:x1; a=a==null?1:a;
+  if(out){
+    const on=new Set(); for(const [x,y] of cells)on.add(x*32+y+1);
+    for(const [x,y] of cells)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      const nx=x+dx, ny=y+dy;
+      if(nx<x0||nx>x1||on.has(nx*32+ny+1))continue;
+      setPx(b,nx,ny,out[0],out[1],out[2],a);
+    }
+  }
+  for(const [x,y] of cells)if(x>=x0&&x<=x1)setPx(b,x,y,col[0],col[1],col[2],a);
+}
+/** Voile de fondu (0 = noir, 1 = intact) sur toute la dalle. */
+function voile(b,k){ if(k<1)for(let i=0;i<b.length;i++)b[i]*=k; }
+
+
+/* ═════ F1 2026 — les onze ecuries et leurs vingt-deux pilotes ═════
+   Grille officielle 2026 : Verstappen court avec le 3, Norris porte le 1
+   de champion du monde. Couleurs : c1 livree, c2 fond, c3 accent,
+   tx couleur du nom de l'ecurie dans les textes. */
+const EC26={
+  mclaren: {n:'MCLAREN',      full:'MCLAREN F1 TEAM',  c1:[255,128,0],   c2:[14,12,14], c3:[90,200,255], tx:[255,140,20]},
+  ferrari: {n:'FERRARI',      full:'SCUDERIA FERRARI', c1:[225,10,10],   c2:[34,0,2],   c3:[255,214,0],  tx:[255,214,0]},
+  redbull: {n:'RED BULL',     full:'RED BULL RACING',  c1:[30,65,170],   c2:[5,10,34],  c3:[230,20,10],  tx:[255,40,30]},
+  mercedes:{n:'MERCEDES',     full:'MERCEDES-AMG',     c1:[190,198,206], c2:[8,10,12],  c3:[0,215,190],  tx:[0,225,200]},
+  aston:   {n:'ASTON MARTIN', full:'ASTON MARTIN',     c1:[0,120,90],    c2:[0,26,20],  c3:[200,255,0],  tx:[200,255,0]},
+  alpine:  {n:'ALPINE',       full:'ALPINE F1 TEAM',   c1:[20,110,240],  c2:[3,12,38],  c3:[255,95,185], tx:[255,110,190]},
+  williams:{n:'WILLIAMS',     full:'WILLIAMS RACING',  c1:[30,100,255],  c2:[2,10,36],  c3:[0,225,255],  tx:[0,225,255]},
+  rb:      {n:'RACING BULLS', full:'RACING BULLS',     c1:[225,230,240], c2:[14,22,60], c3:[60,110,255], tx:[90,140,255]},
+  haas:    {n:'HAAS',         full:'HAAS F1 TEAM',     c1:[225,228,232], c2:[16,16,18], c3:[230,20,40],  tx:[255,40,50]},
+  audi:    {n:'AUDI',         full:'AUDI F1 TEAM',     c1:[175,180,188], c2:[10,10,12], c3:[245,35,45],  tx:[255,50,55]},
+  cadillac:{n:'CADILLAC',     full:'CADILLAC F1 TEAM', c1:[230,230,236], c2:[6,6,8],    c3:[205,175,95], tx:[225,195,110]},
+};
+/* Les noms tels qu'on les ecrit dans une phrase, pour les descriptions. */
+const NOMS26={mclaren:'McLaren',ferrari:'la Scuderia Ferrari',redbull:'Red Bull Racing',mercedes:'Mercedes-AMG',
+  aston:'Aston Martin',alpine:'Alpine',williams:'Williams',rb:'Racing Bulls',haas:'Haas',audi:'Audi',cadillac:'Cadillac'};
+/* Verstappen garde son animation historique `max`, reglee sur le 3. */
+const PILOTES26=[
+  ['norris','Lando','Norris','1','mclaren'],       ['piastri','Oscar','Piastri','81','mclaren'],
+  ['leclerc','Charles','Leclerc','16','ferrari'],  ['hamilton','Lewis','Hamilton','44','ferrari'],
+  ['hadjar','Isack','Hadjar','6','redbull'],
+  ['russell','George','Russell','63','mercedes'],  ['antonelli','Kimi','Antonelli','12','mercedes'],
+  ['alonso','Fernando','Alonso','14','aston'],     ['stroll','Lance','Stroll','18','aston'],
+  ['gasly','Pierre','Gasly','10','alpine'],        ['colapinto','Franco','Colapinto','43','alpine'],
+  ['albon','Alex','Albon','23','williams'],        ['sainz','Carlos','Sainz','55','williams'],
+  ['lawson','Liam','Lawson','30','rb'],            ['lindblad','Arvid','Lindblad','41','rb'],
+  ['ocon','Esteban','Ocon','31','haas'],           ['bearman','Oliver','Bearman','87','haas'],
+  ['hulkenberg','Nico','Hülkenberg','27','audi'],  ['bortoleto','Gabriel','Bortoleto','5','audi'],
+  ['perez','Sergio','Pérez','11','cadillac'],      ['bottas','Valtteri','Bottas','77','cadillac'],
+];
+/* Un pilote : numero geant a gauche, halo a l'accent de l'ecurie, nom qui
+   defile une fois par cycle, et balayage aux couleurs de la livree. */
+for(const [id,prenom,nom,num,ek] of PILOTES26){
+  const e=EC26[ek], zx=1+tw7(num)+2;
+  const NOM=sansAccents(prenom+' '+nom).toUpperCase()+' - ';
+  const TXT=NOM+e.n+'   ';
+  const span=scrollSpan(tw3(TXT),zx,W-1), C=q02(span/11), v=span/C;
+  P(id,prenom+' '+nom,e.n+' #'+num,
+    `Le ${num} en géant avec un halo aux couleurs de ${NOMS26[ek]}, le nom qui défile en entier, puis un balayage de la livrée.`,
+    'Numéro + défilement + balayage',C,
+    [[hex(e.c1),'Livrée'],[hex(e.c3),'Accent'],['#ffffff','Numéro']],
+    function(b,t){
+      const p=t%C;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+        const g=1-y/14, d=x+y*1.6-(p/C)*58, sh=Math.exp(-d*d/26)*.35;
+        setPx(b,x,y,(e.c2[0]+e.c1[0]*sh)*g,(e.c2[1]+e.c1[1]*sh)*g,(e.c2[2]+e.c1[2]*sh)*g);
+      }
+      for(let x=zx;x<W;x++)setPx(b,x,7,e.c1[0]*.7,e.c1[1]*.7,e.c1[2]*.7);
+      const pul=.86+.14*osc(t,C,Math.round(C/1.4));
+      const cells=cells7(num,1,0);
+      haloOf(b,cells,e.c3,.34*pul);
+      for(const [x,y] of cells)setPx(b,x,y,255*pul,255*pul,255*pul);
+      const sx=scrollLoop(tw3(TXT),zx,W-1,p,v);
+      text3(b,NOM,sx,1,[255,255,255],{x0:zx,x1:W-1});
+      text3(b,e.n,sx+tw3(NOM),1,e.tx,{x0:zx,x1:W-1});
+      if(p>C-.9){
+        const wx=(p-(C-.9))/.9*44-6;
+        for(let x=Math.floor(wx-5);x<=wx;x++)for(let y=0;y<H;y++)setPx(b,x,y,e.c1[0],e.c1[1],e.c1[2]);
+        for(let y=0;y<H;y++)addPx(b,Math.round(wx+1),y,255,255,255,.9);
+      }
+    });
+}
+
+/* Une ecurie : la monoplace aux couleurs de la livree traverse la dalle,
+   puis le nom de l'equipe et ses deux pilotes defilent. */
+const ECURIES26=[
+  ['mclaren','McLaren','mclaren'],['ferrari','Scuderia Ferrari','ferrari'],
+  ['mercedes','Mercedes-AMG','mercedes'],['astonmartin','Aston Martin','aston'],
+  ['alpine','Alpine','alpine'],['williams','Williams Racing','williams'],
+  ['racingbulls','Racing Bulls','rb'],['haas','Haas F1 Team','haas'],
+  ['audi','Audi F1 Team','audi'],['cadillac','Cadillac F1 Team','cadillac'],
+];
+for(const [id,nom,ek] of ECURIES26){
+  const e=EC26[ek];
+  const duo=PILOTES26.filter(q=>q[4]===ek).map(q=>'#'+q[3]+' '+sansAccents(q[2]).toUpperCase()).join('  ');
+  const TETE=e.full+'   ', TXT=TETE+duo+'   ';
+  const D=q02(scrollSpan(tw3(TXT),0,W-1)/12), PASS=3.2, C=Math.round((PASS+D)*5)/5;
+  const pal={B:e.c1, R:e.c3, Y:[250,250,250], W:[58,58,70]};
+  P(id,nom,'F1 2026',
+    `La monoplace aux couleurs de ${nom} traverse la dalle dans ses traînées, puis l'équipe et ses deux pilotes défilent : ${titre(duo)}.`,
+    'Sprite + traînées + défilement',C,
+    [[hex(e.c1),'Livrée'],[hex(e.c3),'Accent'],[hex(e.c2),'Fond']],
+    function(b,t){
+      const p=t%C;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++)setPx(b,x,y,e.c2[0]*(1-y/16),e.c2[1]*(1-y/16),e.c2[2]*(1-y/16));
+      if(p<PASS){
+        const off=Math.floor(cyc(p,PASS,.23)*6);
+        for(let x=0;x<W;x++){const on=((x+off)%6)<3; setPx(b,x,7,on?46:6,on?48:7,on?62:10);}
+        const cx=-18+(p/PASS)*54;
+        for(let y=1;y<7;y++)for(let q=0;q<12;q++){
+          const f=Math.pow(.76,q)*(.2+.16*Math.sin(p*30+y*2));
+          addPx(b,cx-2-q,y,e.c1[0]*f,e.c1[1]*f,e.c1[2]*f,1);
+        }
+        sprite(b,CAR,cx,1,pal);
+        const fr=Math.floor(p*25);
+        for(let s=0;s<3;s++)if(rnd(fr,s)<.5)addPx(b,cx+3+rnd(fr,s+9)*10,7,255,150+rnd(fr,s+20)*90,20,.9);
+      } else {
+        const q=p-PASS, sx=scrollOnce(tw3(TXT),0,W-1,q,D), off=Math.floor(q*6);
+        for(let x=0;x<W;x++){
+          const c=((x+off)>>2)%2?e.c1:e.c3;
+          setPx(b,x,0,c[0]*.6,c[1]*.6,c[2]*.6); setPx(b,x,7,c[0]*.6,c[1]*.6,c[2]*.6);
+        }
+        const cT=cells3(TETE,sx,1);
+        haloOf(b,cT,e.c1,.22);
+        ink(b,cT,e.tx);
+        text3(b,duo,sx+tw3(TETE),1,[255,255,255]);
+      }
+    });
+}
+
+/* La grille 2026 : les vingt-deux numeros, chacun a la couleur de son
+   ecurie, entre deux liseres aux onze livrees. */
+{
+  const ordre=['mclaren','ferrari','redbull','mercedes','aston','alpine','williams','rb','haas','audi','cadillac'];
+  const segs=[['F1 2026   ',[255,255,255]]];
+  for(const ek of ordre){
+    const nums=(ek==='redbull'?['3']:[]).concat(PILOTES26.filter(q=>q[4]===ek).map(q=>q[3]));
+    segs.push([nums.join(' ')+'   ',EC26[ek].tx]);
+  }
+  const TOT=segs.reduce((s,g)=>s+tw3(g[0]),0);
+  const span=scrollSpan(TOT,0,W-1), C=q02(span/12), v=span/C;
+  P('grille2026','Grille F1 2026','F1 2026',
+    "Les vingt-deux numéros de la saison défilent, chacun à la couleur de son écurie, entre deux liserés aux onze livrées.",
+    'Défilement multicolore',C,
+    [['#ff8000','McLaren'],['#e10a0a','Ferrari'],['#1e41aa','Red Bull']],
+    function(b,t){
+      const p=t%C; clear(b,3,3,6);
+      ordre.forEach((ek,i)=>{const c=EC26[ek].c1;
+        for(let x=i*3;x<i*3+3;x++){setPx(b,x,0,c[0]*.8,c[1]*.8,c[2]*.8);setPx(b,x,7,c[0]*.8,c[1]*.8,c[2]*.8);}});
+      let x=scrollLoop(TOT,0,W-1,p,v);
+      for(const [s,c] of segs){text3(b,s,x,1,c);x+=tw3(s);}
+    });
+}
+
+
+/* ═════ TOP 14 2026-2027 — les treize autres clubs et deux generiques ═════
+   Le Stade Toulousain a deja sa propre animation (`stade`). Chaque club a
+   un motif qui lui est propre, pour que deux clubs aux memes couleurs ne se
+   confondent pas : volcans d'Auvergne, avirons de Bayonne, senyera
+   catalane, hermine bretonne, tour Eiffel...
+   Phase A : motif plein ecran et sigle en grand. Phase B : nom qui defile. */
+const MOTIFS14={
+  /* UBB : chevrons blancs qui avancent sur le bordeaux */
+  chevrons(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      const v=((x-Math.abs(y-3.5)*1.3-p*9)%8+8)%8;
+      const k=v<1.6?.75:0;
+      setPx(b,x,y,lerp(c1[0],c2[0],k)*.9,lerp(c1[1],c2[1],k)*.9,lerp(c1[2],c2[2],k)*.9);
+    }
+  },
+  /* Toulon : diagonale rouge et noir qui bat au rythme du pilou-pilou */
+  pilou(b,p,c1,c2){
+    const beat=Math.exp(-((p%.85))*5), k=.5+.5*beat;
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      const c=(x+y*1.4)<17?c1:c2;
+      setPx(b,x,y,c[0]*k,c[1]*k,c[2]*k);
+    }
+    ring(b,15.5,3.5,((p%.85)/.85)*18,1.2,c1,.5*beat,true);
+  },
+  /* Clermont : chaine des Puys bleue sur ciel jaune, fumee qui s'eleve */
+  volcans(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      const g=.55+.45*(y/7);
+      setPx(b,x,y,c1[0]*g,c1[1]*g,c1[2]*g);
+    }
+    for(const [cx,h] of [[4,4],[15,6],[27,5]])
+      for(let x=0;x<W;x++){
+        const top=H-(h-Math.abs(x-cx)*.9);
+        for(let y=Math.ceil(top);y<H;y++)setPx(b,x,y,c2[0],c2[1],c2[2]);
+      }
+    for(let k=0;k<4;k++){
+      const q=((p*.9+k*.25)%1);
+      addPx(b,15+Math.sin(q*6+k)*1.5,1.5-q*4,120,120,130,.8*(1-q));
+    }
+  },
+  /* La Rochelle : houle noire sur le jaune, ecume a la crete */
+  vagues(b,p,c1,c2){
+    for(let x=0;x<W;x++){
+      const cr=4.6+1.3*Math.sin(x*.45-p*4)+.5*Math.sin(x*.9+p*2.5);
+      for(let y=0;y<H;y++){
+        const c=y>=cr?c2:c1;
+        setPx(b,x,y,c[0],c[1],c[2]);
+      }
+      addPx(b,x,Math.ceil(cr),255,255,255,.55);
+    }
+  },
+  /* Racing 92 : cerceaux ciel et blanc qui descendent */
+  cerceaux(b,p,c1,c2){
+    for(let y=0;y<H;y++){
+      const c=Math.floor((y+p*2.4)/2)%2?c2:c1;
+      for(let x=0;x<W;x++)setPx(b,x,y,c[0]*.85,c[1]*.85,c[2]*.85);
+    }
+  },
+  /* Stade Francais : ciel rose, tour Eiffel qui scintille */
+  eiffel(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){const g=.45+.55*(1-y/9);setPx(b,x,y,c1[0]*g,c1[1]*g,c1[2]*g);}
+    sprite(b,["...X...","...X...","..XXX..","..X.X..",".XXXXX.",".X...X.","XX...XX","X.....X"],24,0,{X:c2});
+    const f=Math.floor(p*6);
+    for(let k=0;k<3;k++)if(rnd(f,k)<.6)addPx(b,25+rnd(f,k+5)*5,1+rnd(f,k+9)*6,255,255,230,.9);
+  },
+  /* Castres : rayons blancs qui tournent sur le bleu */
+  rayons(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      const a=Math.atan2(y-3.5,(x-15.5)/2.2)/6.2832+.5;
+      const k=((a*12+p*.45)%1)<.35?.35:0;
+      setPx(b,x,y,lerp(c1[0],c2[0],k),lerp(c1[1],c2[1],k),lerp(c1[2],c2[2],k));
+    }
+  },
+  /* Pau : Pyrenees enneigees sur fond vert, en lent travelling */
+  pyrenees(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){const g=.5+.5*(1-y/8);setPx(b,x,y,c1[0]*g,c1[1]*g,c1[2]*g);}
+    for(let x=0;x<W;x++){
+      const u=x+p*2.5;
+      const h=3.2+2*Math.abs(Math.sin(u*.33))+1.1*Math.abs(Math.sin(u*.71+1));
+      const top=Math.ceil(H-h);
+      for(let y=top;y<H;y++){
+        const snow=y<top+1.5;
+        setPx(b,x,y,snow?245:c2[0]*.62,snow?248:c2[1]*.66,snow?252:c2[2]*.7);
+      }
+    }
+  },
+  /* Bayonne : deux avirons croises qui rament */
+  avirons(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){const g=.6+.4*(y/7);setPx(b,x,y,c1[0]*g,c1[1]*g,c1[2]*g);}
+    const sw=Math.sin(p*3.2)*.18;
+    for(const s of [1,-1]){
+      const a=s*(.3+sw);
+      for(let r=-15;r<=15;r+=.5){
+        const x=15.5+Math.cos(a)*r, y=3.5+Math.sin(a)*r;
+        setPx(b,x,y,c2[0],c2[1],c2[2]);
+        if(Math.abs(r)>11.5)for(let d=-1;d<=1;d++)setPx(b,x,y+d,c2[0],c2[1],c2[2]);
+      }
+    }
+  },
+  /* Lyon : bandes diagonales rouge, blanc, noir */
+  diagonale(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      const v=((x+y*1.2+p*6)%18+18)%18;
+      const c=v<8?c1:v<9.2?[235,235,235]:c2;
+      setPx(b,x,y,c[0],c[1],c[2]);
+    }
+  },
+  /* Montpellier : rayures verticales bleu et blanc qui ondulent */
+  bandes(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      const v=((x+Math.sin(y*.8+p*3)*1.2-p*5)%6+6)%6;
+      const c=v<3.4?c1:c2;
+      setPx(b,x,y,c[0]*.85,c[1]*.85,c[2]*.85);
+    }
+  },
+  /* Perpignan : la senyera catalane, or et sang, qui flotte */
+  senyera(b,p,c1,c2){
+    clear(b,0,0,0);
+    flag(b,p,3.4,(x,y)=>y%2?c1:c2);
+  },
+  /* Vannes : hermines bretonnes qui glissent sur le blanc */
+  hermine(b,p,c1,c2){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++)setPx(b,x,y,c2[0]*.92,c2[1]*.92,c2[2]*.95);
+    const off=p*4;
+    for(let i=-1;i<7;i++)for(let j=0;j<2;j++){
+      const x=Math.round(i*6+(j?3:0)+off%6), y=j?4:0;
+      sprite(b,[".X.","XXX",".X.","X.X"],x,y,{X:[10,12,20]});
+    }
+  },
+};
+const CLUBS14=[
+  {id:'ubb',nom:'Union Bordeaux-Bègles',sigle:'UBB',txt:'UNION BORDEAUX-BEGLES - ALLEZ UBB',
+   c1:[125,0,45],c2:[240,240,240],sig:[255,255,255],bgB:[60,0,22],txB:[255,255,255],m:'chevrons',
+   motif:'des chevrons blancs qui avancent sur le bordeaux'},
+  {id:'toulon',nom:'RC Toulon',sigle:'RCT',txt:'RC TOULON - PILOU PILOU',
+   c1:[215,10,20],c2:[10,10,12],sig:[255,255,255],bgB:[10,8,8],txB:[255,40,40],m:'pilou',
+   motif:'une diagonale rouge et noir qui bat au rythme du pilou-pilou'},
+  {id:'clermont',nom:'ASM Clermont Auvergne',sigle:'ASM',txt:'ASM CLERMONT AUVERGNE - LES JAUNARDS',
+   c1:[255,200,0],c2:[0,50,140],sig:[255,255,255],bgB:[0,36,105],txB:[255,205,0],m:'volcans',
+   motif:'la chaîne des Puys en bleu sur un ciel jaune'},
+  {id:'larochelle',nom:'Stade Rochelais',sigle:'SR',txt:'STADE ROCHELAIS - LES MARITIMES',
+   c1:[255,205,0],c2:[10,10,12],sig:[10,10,12],bgB:[8,8,10],txB:[255,205,0],m:'vagues',
+   motif:'une houle noire sur le jaune'},
+  {id:'racing92',nom:'Racing 92',sigle:'R92',txt:'RACING 92 - CIEL ET BLANC',
+   c1:[110,185,240],c2:[245,248,252],sig:[10,30,90],bgB:[8,24,70],txB:[120,195,245],m:'cerceaux',
+   motif:'des cerceaux ciel et blanc'},
+  {id:'stadefrancais',nom:'Stade Français Paris',sigle:'SF',txt:'STADE FRANCAIS PARIS',
+   c1:[235,60,150],c2:[10,25,95],sig:[255,255,255],bgB:[10,20,80],txB:[255,90,170],m:'eiffel',
+   motif:'la tour Eiffel qui scintille sur un ciel rose'},
+  {id:'castres',nom:'Castres Olympique',sigle:'CO',txt:'CASTRES OLYMPIQUE',
+   c1:[0,75,175],c2:[245,245,250],sig:[255,255,255],bgB:[0,36,96],txB:[255,255,255],m:'rayons',
+   motif:'des rayons blancs qui tournent sur le bleu'},
+  {id:'pau',nom:'Section Paloise',sigle:'SP',txt:'SECTION PALOISE - BEARN',
+   c1:[0,130,65],c2:[245,245,245],sig:[255,255,255],bgB:[0,52,26],txB:[255,255,255],m:'pyrenees',
+   motif:'les Pyrénées enneigées sur fond vert'},
+  {id:'bayonne',nom:'Aviron Bayonnais',sigle:'AB',txt:'AVIRON BAYONNAIS - CIEL ET BLANC',
+   c1:[90,175,235],c2:[250,250,252],sig:[10,40,95],bgB:[10,36,86],txB:[110,190,245],m:'avirons',
+   motif:'deux avirons croisés qui rament'},
+  {id:'lyon',nom:'Lyon OU',sigle:'LOU',txt:'LYON OLYMPIQUE UNIVERSITAIRE',
+   c1:[205,10,30],c2:[10,10,12],sig:[255,255,255],bgB:[10,10,12],txB:[255,255,255],m:'diagonale',
+   motif:'des bandes diagonales rouge, blanc et noir'},
+  {id:'montpellier',nom:'Montpellier HR',sigle:'MHR',txt:'MONTPELLIER HERAULT RUGBY',
+   c1:[25,70,165],c2:[245,245,250],sig:[255,255,255],bgB:[10,28,78],txB:[255,255,255],m:'bandes',
+   motif:'des rayures bleu et blanc qui ondulent'},
+  {id:'perpignan',nom:'USA Perpignan',sigle:'USAP',txt:'USA PERPIGNAN - SANG ET OR',
+   c1:[170,0,20],c2:[255,190,0],sig:[255,255,255],bgB:[56,0,8],txB:[255,195,0],m:'senyera',
+   motif:'la senyera catalane, sang et or, qui flotte'},
+  {id:'vannes',nom:'RC Vannes',sigle:'RCV',txt:'RUGBY CLUB VANNETAIS',
+   c1:[25,75,205],c2:[245,245,250],sig:[25,75,205],bgB:[10,30,90],txB:[255,255,255],m:'hermine',
+   motif:'des hermines bretonnes qui glissent sur le blanc'},
+];
+const PH14=3.4;
+for(const k of CLUBS14){
+  const T=k.txt+'   ', D=q02(scrollSpan(tw3(T),0,W-1)/12), C=Math.round((PH14+D)*5)/5;
+  const sx=Math.round((W-tw7(k.sigle))/2), out=k.sig[0]+k.sig[1]+k.sig[2]>380?k.bgB:(k.c2[0]+k.c2[1]+k.c2[2]>380?k.c2:k.c1);
+  P(k.id,k.nom,'TOP 14',
+    `Le sigle ${k.sigle} en grand sur ${k.motif}, puis « ${titre(k.txt)} » qui défile entre deux liserés aux couleurs du club.`,
+    'Motif + sigle + défilement',C,
+    [[hex(k.c1),'Couleur 1'],[hex(k.c2),'Couleur 2'],[hex(k.bgB),'Fond']],
+    function(b,t){
+      const p=t%C;
+      if(p<PH14){
+        MOTIFS14[k.m](b,p,k.c1,k.c2);
+        const a=clamp(p/.3,0,1)*clamp((PH14-p)/.2,0,1);
+        ink(b,cells7(k.sigle,sx,0),k.sig,out,0,W-1,a);
+      } else {
+        const q=p-PH14, off=Math.floor(q*6);
+        clear(b,k.bgB[0],k.bgB[1],k.bgB[2]);
+        for(let x=0;x<W;x++){
+          const c=((x+off)>>2)%2?k.c1:k.c2;
+          setPx(b,x,0,c[0],c[1],c[2]); setPx(b,x,7,c[0],c[1],c[2]);
+        }
+        text3(b,T,scrollOnce(tw3(T),0,W-1,q,D),1,k.txB);
+      }
+    });
+}
+
+/* Generique Top 14 : les quatorze clubs en barres qui montent, le titre
+   qui s'allume sous un reflet d'or, puis la saison qui defile. */
+{
+  const COULEURS=[[[210,10,20],[12,12,14]]].concat(CLUBS14.map(k=>[k.c1,k.c2]));
+  const T='CHAMPIONNAT DE FRANCE DE RUGBY - SAISON 2026-2027   ';
+  const A1=2.6, A2=3.2, D=q02(scrollSpan(tw3(T),0,W-1)/12), C=Math.round((A1+A2+D)*5)/5;
+  const barres=(b,p,k)=>COULEURS.forEach(([c1,c2],i)=>{
+    const h=clamp((p-i*.1)/.6,0,1)*8;
+    for(let y=0;y<H;y++){
+      if(H-y>h)continue;
+      const c=y%2?c2:c1;
+      for(let x=2+i*2;x<4+i*2;x++)setPx(b,x,y,c[0]*k,c[1]*k,c[2]*k);
+    }
+  });
+  P('top14','Générique Top 14','TOP 14',
+    "Les quatorze clubs de la saison 2026-2027 montent en barres à leurs couleurs, « TOP14 » s'allume sous un reflet d'or, puis le championnat défile.",
+    'Égaliseur + titre + défilement',C,
+    [['#d4a017','Or'],['#ffffff','Titre'],['#0a0a14','Fond']],
+    function(b,t){
+      const p=t%C; clear(b,4,4,10);
+      if(p<A1) barres(b,p,1);
+      else if(p<A1+A2){
+        const q=p-A1;
+        barres(b,99,.28);
+        const cells=cells7('TOP14',1,0), sw=-4+q/A2*44;
+        ink(b,cells,[255,255,255],[20,14,4]);
+        for(const [x,y] of cells){const d=x+y*.6-sw; const g=Math.exp(-d*d/5);
+          if(g>.05)setPx(b,x,y,255,lerp(255,200,g),lerp(255,60,g));}
+      } else {
+        const q=p-A1-A2;
+        COULEURS.forEach(([c1],i)=>{for(let x=2+i*2;x<4+i*2;x++){setPx(b,x,0,c1[0],c1[1],c1[2]);setPx(b,x,7,c1[0],c1[1],c1[2]);}});
+        text3(b,T,scrollOnce(tw3(T),0,W-1,q,D),1,[255,220,120]);
+      }
+    });
+}
+
+/* Generique Champions Cup : nuit etoilee, la coupe monte au centre puis
+   se range a gauche, et le nom de la competition defile a cote. */
+{
+  const COUPE=["G.GGGGG.G","G.GGGGG.G",".GGGGGGG.","..GGGGG..","...GGG...","....G....","...GGG...","..GGGGG.."];
+  const T='CHAMPIONS CUP - COUPE EUROPEENNE   ';
+  const A1=3, D=q02(scrollSpan(tw3(T),11,W-1)/12), C=Math.round((A1+D)*5)/5;
+  const ETOILES=Array.from({length:14},(_,i)=>[Math.floor(rnd(i,1)*W),Math.floor(rnd(i,2)*H),rnd(i,3)]);
+  P('championscup','Générique Champions Cup','RUGBY EUROPE',
+    "Nuit étoilée bleu nuit, la coupe d'or monte au centre sous un reflet, se range à gauche, et « Champions Cup » défile à ses côtés.",
+    'Étoiles + sprite + défilement',C,
+    [['#e6b422','Or'],['#1a1446','Nuit'],['#ffffff','Étoiles']],
+    function(b,t){
+      const p=t%C;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++)setPx(b,x,y,8+y*2,8+y,34+y*4);
+      for(const [x,y,ph] of ETOILES){const k=.25+.75*Math.max(0,Math.sin((cyc(p,C,1.6)+ph)*6.2832));addPx(b,x,y,200*k,200*k,255*k,1);}
+      let cx, cy;
+      if(p<A1){ cy=Math.round(lerp(8,0,clamp(p/.8,0,1))); cx=Math.round(lerp(11.5,1,clamp((p-2.3)/.7,0,1))); }
+      else { cy=0; cx=1; }
+      sprite(b,COUPE,cx,cy,{G:[230,180,34]});
+      const sw=cyc(p,C,2.2)*16-3;
+      for(let r=0;r<8;r++)for(let c=0;c<9;c++)if(COUPE[r][c]==='G'){
+        const d=c+r*.5-sw, g=Math.exp(-d*d/3); if(g>.05)addPx(b,cx+c,cy+r,255*g,240*g,180*g,1);}
+      if(p>=A1)text3(b,T,scrollOnce(tw3(T),11,W-1,p-A1,D),1,[255,215,90],{x0:11,x1:W-1});
+    });
+}
+
+
+/* ═════ IRON MAN — onze animations rouge et or ═════
+   Le reacteur Arc existe deja (`arcreactor`). Ce lot ajoute le casque, les
+   armes, le vol, l'assemblage de l'armure et l'interface de J.A.R.V.I.S. */
+const IM_R=[190,18,20], IM_G=[225,165,35], IM_K=[36,8,4], IM_EYE=[210,245,255];
+const CASQUE=[
+  "..RRRRRRRR..",
+  ".RRGGGGGGRR.",
+  ".RGGGGGGGGR.",
+  "RGEEEGGEEEGR",
+  "RGGGGGGGGGGR",
+  "RRGGGGGGGGRR",
+  ".RRGKKKKGRR.",
+  "..RRGGGGRR..",
+];
+/* Casque en x0 ; lift remonte la plaque faciale (0 = fermee), eye 0..1. */
+function casque(b,x0,y0,eye,lift){
+  for(let r=0;r<8;r++)for(let c=0;c<12;c++){
+    const ch=CASQUE[r][c];
+    if(ch==='.')continue;
+    if(ch==='R'){setPx(b,x0+c,y0+r,IM_R[0],IM_R[1],IM_R[2]);continue;}
+    setPx(b,x0+c,y0+r,28,4,4);                       // interieur sous la plaque
+  }
+  for(let r=0;r<8;r++)for(let c=0;c<12;c++){
+    const ch=CASQUE[r][c], y=r-(lift||0);
+    if(ch==='.'||ch==='R'||y<1)continue;
+    const col=ch==='G'?IM_G:ch==='K'?IM_K:[lerp(IM_G[0]*.3,IM_EYE[0],eye),lerp(IM_G[1]*.3,IM_EYE[1],eye),lerp(IM_G[2]*.3,IM_EYE[2],eye)];
+    setPx(b,x0+c,y0+y,col[0],col[1],col[2]);
+  }
+  if(eye>.05&&!lift)for(const cx of [x0+3,x0+8]){
+    addPx(b,cx,y0+2,90*eye,180*eye,255*eye,.5); addPx(b,cx,y0+4,90*eye,180*eye,255*eye,.35);
+  }
+}
+/* Positions cibles de chaque pixel du casque, pour les assemblages. */
+const CASQUE_PX=[];
+for(let r=0;r<8;r++)for(let c=0;c<12;c++)if(CASQUE[r][c]!=='.')CASQUE_PX.push([c,r,CASQUE[r][c]]);
+const couleurCasque=(ch,eye)=>ch==='R'?IM_R:ch==='G'?IM_G:ch==='K'?IM_K:
+  [lerp(IM_G[0]*.3,IM_EYE[0],eye),lerp(IM_G[1]*.3,IM_EYE[1],eye),lerp(IM_G[2]*.3,IM_EYE[2],eye)];
+const easeOut=q=>1-Math.pow(1-clamp(q,0,1),3);
+
+{
+  const C=9, T='IRON MAN   ', span=scrollSpan(tw3(T),14,W-1);
+  P('ironman','Iron Man','MARVEL',
+    "Le casque s'allume en clignotant, la plaque faciale se relève puis se referme d'un coup sec, et « IRON MAN » défile en or à côté.",
+    'Sprite + plaque mobile + défilement',C,
+    [['#be1214','Rouge'],['#e1a523','Or'],['#d2f5ff','Yeux']],
+    function(b,t){
+      const p=t%C; clear(b,6,1,1);
+      let eye=0, lift=0;
+      if(p<1.2) eye=rnd(Math.floor(p*14),7)<p/1.2?1:.1;
+      else if(p<6) eye=.94+.06*osc(t,C,6);
+      else if(p<6.6) lift=Math.round(easeOut((p-6)/.6)*6);
+      else if(p<7.8) lift=6;
+      else if(p<8.2) lift=Math.round((1-(p-7.8)/.4)*6);
+      casque(b,1,0,eye,lift);
+      if(p>=8.2&&p<8.35)for(let y=0;y<H;y++)for(let x=0;x<13;x++)addPx(b,x,y,255,230,180,.35);
+      const cells=cells3(T,scrollLoop(tw3(T),14,W-1,p,span/C),1);
+      haloOf(b,cells.filter(([x])=>x>=14),[150,10,10],.35);
+      ink(b,cells,[255,195,50],null,14,W-1);
+    });
+}
+
+{
+  const C=4;
+  P('repulsor','Répulseur','MARVEL',
+    "Le répulseur se charge en anneau, l'énergie converge, puis le rayon traverse toute la dalle avant de refroidir.",
+    'Charge + rayon + onde de choc',C,
+    [['#78dcff','Cyan'],['#ffffff','Cœur'],['#be1214','Gant']],
+    function(b,t){
+      const p=t%C; clear(b,2,3,8);
+      for(let y=2;y<6;y++)for(let x=0;x<3;x++)setPx(b,x,y,y===2||y===5?IM_G[0]:IM_R[0],y===2||y===5?IM_G[1]:IM_R[1],y===2||y===5?IM_G[2]:IM_R[2]);
+      const ch=p<1.6?p/1.6:p<2.4?1:Math.max(0,1-(p-2.4)/1.2);
+      disc(b,4,3.5,.8+ch*1.6,[120*ch+40,220*ch+30,255*ch+40],1,true);
+      ring(b,4,3.5,1.6+ch*1.4,.8,[120,220,255],.7*ch,true);
+      if(p<1.6)for(let k=0;k<6;k++){
+        const q=(p*1.8+k/6)%1, a=k*1.05;
+        addPx(b,4+Math.cos(a)*(6-q*5),3.5+Math.sin(a)*(3-q*2.5),120,220,255,.8*q);
+      }
+      if(p>=1.6&&p<2.4){
+        const q=p-1.6, front=5+clamp(q/.15,0,1)*27, fl=.8+.2*rnd(Math.floor(p*25),3);
+        for(let x=5;x<front;x++)for(let y=1;y<7;y++){
+          const d=Math.abs(y-3.5), core=d<1?1:d<2?.55:.18;
+          addPx(b,x,y,(120+135*core)*fl,(200+55*core)*fl,255*fl,core);
+        }
+        if(front>=31)ring(b,31,3.5,(q-.15)*14,1,[180,240,255],.6,true);
+      }
+    });
+}
+
+{
+  const C=5;
+  P('unibeam','Unibeam','MARVEL',
+    "Le réacteur de poitrine monte en puissance, pulse de plus en plus vite, et libère un rayon géant qui fait trembler toute la dalle.",
+    'Charge + rayon plein écran + secousse',C,
+    [['#ffffff','Cœur'],['#64d2ff','Rayon'],['#be1214','Armure']],
+    function(b,t){
+      const p=t%C; clear(b,3,2,4);
+      const sh=p>=2&&p<3.4?Math.round((rnd(Math.floor(p*25),1)-.5)*2):0;
+      for(let y=0;y<H;y++)for(let x=0;x<3;x++)setPx(b,x+sh,y,IM_R[0]*.8,IM_R[1],IM_R[2]);
+      const ch=p<2?p/2:p<3.4?1:Math.max(0,1-(p-3.4)/1.6);
+      const puls=p<2?.5+.5*Math.abs(Math.sin(p*p*9)):1;
+      disc(b,5+sh,3.5,1.4+ch*.8,[150,230,255],.4+.6*puls*ch,true);
+      ring(b,5+sh,3.5,2.6,.7,[100,210,255],ch*.6,true);
+      if(p>=2&&p<3.4){
+        const q=p-2, fl=.85+.15*rnd(Math.floor(p*25),2), front=6+clamp(q/.12,0,1)*26;
+        for(let x=6;x<front;x++)for(let y=0;y<H;y++){
+          const d=Math.abs(y-3.5), core=d<1.5?1:d<2.6?.6:.25;
+          addPx(b,x+sh,y,(100+155*core)*fl,(200+55*core)*fl,255*fl,core);
+        }
+        for(let k=0;k<4;k++){const f=Math.floor(p*25);addPx(b,8+rnd(f,k)*23,rnd(f,k+4)<.5?0:7,255,255,255,.8);}
+      }
+    });
+}
+
+{
+  const C=6;
+  const SIL=[".....RRRR.","BRRRRRRRGG",".....RRRR."];
+  const VILLE=Array.from({length:W},(_,x)=>2+Math.floor(rnd(x,31)*3));
+  P('ironflight','Vol de nuit','MARVEL',
+    "Iron Man traverse le ciel nocturne au-dessus de la ville, traînée de propulseurs derrière les bottes, les fenêtres qui s'allument en contrebas.",
+    'Sprite + traînée + parallaxe',C,
+    [['#be1214','Armure'],['#bfe6ff','Propulseurs'],['#ffd060','Ville']],
+    function(b,t){
+      const p=t%C;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++)setPx(b,x,y,2+y*y*.6,3+y,14+y*3.5);
+      for(let k=0;k<8;k++){const tw=.4+.6*Math.abs(osc(t,C,3+k%3));addPx(b,rnd(k,40)*W,rnd(k,41)*4,160*tw,170*tw,210*tw,1);}
+      const off=Math.floor(p/C*W);
+      for(let x=0;x<W;x++){
+        const u=(x+off)%W, h=VILLE[u];
+        for(let y=H-h;y<H;y++){
+          setPx(b,x,y,3,3,6);
+          if(u%3!==2&&y>H-h&&rnd(u,y)<.35)setPx(b,x,y,255,200,90);
+        }
+      }
+      const fx=-10+p/C*52, fy=1.5+osc(t,C,2)*1.2;
+      for(let q=1;q<14;q++){const f=Math.pow(.8,q);addPx(b,fx-q,fy+1+Math.sin(q*.9+p*20)*.3,190*f,230*f,255*f,1);}
+      sprite(b,SIL,fx,fy,{R:IM_R,G:IM_G,B:[220,245,255]});
+    });
+}
+
+{
+  const C=6;
+  const DEP=CASQUE_PX.map((_,i)=>[rnd(i,1)*60-14,rnd(i,2)*26-9,rnd(i,3)*.7]);
+  P('suitup','Assemblage de l\'armure','MARVEL',
+    "Les plaques rouges et or arrivent de partout et s'emboîtent en casque, les yeux s'allument, puis l'armure se disperse à nouveau.",
+    'Assemblage de particules',C,
+    [['#be1214','Rouge'],['#e1a523','Or'],['#d2f5ff','Yeux']],
+    function(b,t){
+      const p=t%C; clear(b,4,3,6);
+      const eye=p>2.6&&p<4.6?clamp((p-2.6)/.3,0,1):0;
+      CASQUE_PX.forEach(([c,r,ch],i)=>{
+        const [sx,sy,d]=DEP[i];
+        const k=p<3?easeOut((p-d)/(2.2-d*.6)):p<4.6?1:1-easeOut((p-4.6-d*.4)/1);
+        const col=couleurCasque(ch,eye);
+        setPx(b,lerp(sx,10+c,k),lerp(sy,r,k),col[0],col[1],col[2]);
+      });
+      if(p>=4.3&&p<4.6)for(let y=0;y<H;y++)for(let x=8;x<24;x++)addPx(b,x,y,255,210,150,.25);
+    });
+}
+
+{
+  const C=8, T='J.A.R.V.I.S. - SYSTEMES EN LIGNE   ', span=scrollSpan(tw3(T),10,W-1);
+  P('jarvis','J.A.R.V.I.S.','MARVEL',
+    "L'interface du casque : réticule circulaire aux arcs qui tournent, ligne de balayage, et « J.A.R.V.I.S. - systèmes en ligne » qui défile.",
+    'HUD + balayage + défilement',C,
+    [['#3cc8ff','HUD'],['#ffffff','Texte'],['#020a14','Fond']],
+    function(b,t){
+      const p=t%C; clear(b,1,5,10);
+      const rot=p/C*6.2832*2;
+      for(let a=0;a<6.2832;a+=.12){
+        const seg=((a+rot)%1.57)<1.05;
+        if(seg)addPx(b,4+Math.cos(a)*3.3,3.5+Math.sin(a)*3.3,60,200,255,.9);
+        if(((a-rot*1.6+20)%2.1)<.7)addPx(b,4+Math.cos(a)*1.8,3.5+Math.sin(a)*1.8,140,230,255,.8);
+      }
+      setPx(b,4,3,255,255,255,.6+.4*Math.abs(osc(t,C,8)));
+      const sy=cyc(p,C,2)*9-1;
+      for(let x=0;x<W;x++)addPx(b,x,sy,40,150,210,.35);
+      text3(b,T,scrollLoop(tw3(T),10,W-1,p,span/C),1,[200,240,255],{x0:10,x1:W-1});
+      for(let y=0;y<H;y++)addPx(b,9,y,30,120,180,.5);
+    });
+}
+
+{
+  const T='I AM IRON MAN   ', D=q02(scrollSpan(tw3(T),0,W-1)/12), SNAP=1.6, C=Math.round((D+SNAP)*5)/5;
+  const PIERRES=[[170,60,255],[60,140,255],[255,40,40],[255,140,20],[40,230,90],[255,220,40]];
+  P('iamironman','I am Iron Man','MARVEL',
+    "La réplique qui a tout commencé défile en or sur le rouge du réacteur, puis le claquement de doigts : éclair blanc et six éclats aux couleurs des Pierres.",
+    'Défilement + éclair + éclats',C,
+    [['#ffc832','Or'],['#ffffff','Éclair'],['#aa3cff','Pierres']],
+    function(b,t){
+      const p=t%C;
+      if(p<D){
+        for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+          const d=Math.hypot((x-15.5)/3,y-3.5);
+          setPx(b,x,y,40+30*Math.exp(-d*d/6),4,4+30*Math.exp(-d*d/6));
+        }
+        const cells=cells3(T,scrollOnce(tw3(T),0,W-1,p,D),1);
+        haloOf(b,cells,[160,20,10],.35);
+        ink(b,cells,[255,200,50]);
+      } else {
+        const q=(p-D)/SNAP; clear(b,0,0,0);
+        disc(b,15.5,3.5,q*26,[255,255,255],Math.max(0,1-q*1.6),true);
+        PIERRES.forEach((c,i)=>{
+          const a=i/6*6.2832+.5, r=2+q*20;
+          disc(b,15.5+Math.cos(a)*r,3.5+Math.sin(a)*r*.45,.9,c,Math.max(0,1-q*1.1),true);
+        });
+      }
+    });
+}
+
+{
+  const C=6;
+  P('hotrod','Armure Hot Rod','MARVEL',
+    "Gros plan sur les plaques de l'armure : rouge profond, bande d'or, joints et rivets, et deux reflets qui glissent sur le métal.",
+    'Texture + reflets',C,
+    [['#be1214','Rouge'],['#e1a523','Or'],['#ffffff','Reflet']],
+    function(b,t){
+      const p=t%C;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+        const gold=y>=3&&y<=4&&(x%16)>2&&(x%16)<14;
+        const g=.75+.25*(1-y/8);
+        let c=gold?IM_G:[IM_R[0]*g,IM_R[1]*g,IM_R[2]*g];
+        if(x%8===0||y===0)c=[c[0]*.45,c[1]*.45,c[2]*.45];
+        setPx(b,x,y,c[0],c[1],c[2]);
+      }
+      for(let x=4;x<W;x+=8){addPx(b,x,1,255,190,150,.5);addPx(b,x,6,255,190,150,.5);}
+      const s=cyc(p,C,3)*50-10;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++){const d=x+y*.8-s; addPx(b,x,y,255,245,220,.55*Math.exp(-d*d/5));}
+    });
+}
+
+{
+  const C=7;
+  const DEL=CASQUE_PX.map((_,i)=>rnd(i,61)*1.4);
+  P('nanotech','Armure nanotech','MARVEL',
+    "Des nanoparticules jaillissent du réacteur, filent en spirale et construisent le casque, qui scintille avant de se dissoudre.",
+    'Particules + scintillement',C,
+    [['#be1214','Rouge'],['#e1a523','Or'],['#9fb4d0','Nanoparticules']],
+    function(b,t){
+      const p=t%C; clear(b,2,2,5);
+      disc(b,16,7.5,1.3,[120,210,255],.6+.4*Math.abs(osc(t,C,7)),true);
+      const eye=p>3.4&&p<5.2?clamp((p-3.4)/.3,0,1):0;
+      const sw=p>3.4&&p<5.2?(p-3.4)/1.8*40-8:-99;
+      CASQUE_PX.forEach(([c,r,ch],i)=>{
+        const k=p<5.2?easeOut((p-DEL[i])/1.8):1-easeOut((p-5.2-DEL[i]*.4)/1.2);
+        if(k<=0)return;
+        const a=(1-k)*5+i, rad=(1-k)*4;
+        const x=lerp(16,10+c,k)+Math.cos(a)*rad, y=lerp(7.5,r,k)+Math.sin(a)*rad*.5;
+        const col=k<.98?[150,170,200]:couleurCasque(ch,eye);
+        setPx(b,x,y,col[0],col[1],col[2]);
+        const d=c+r*.6-sw; if(k>=.98)addPx(b,x,y,200,220,255,.6*Math.exp(-d*d/3));
+      });
+    });
+}
+
+{
+  const C=6;
+  P('ironhud','Verrouillage de cible','MARVEL',
+    "Vue depuis le casque : le réticule traque un drone, se referme et vire au rouge au verrouillage, le missile part, et l'explosion éclaire le viseur.",
+    'Réticule + verrouillage + explosion',C,
+    [['#3cc8ff','Viseur'],['#ff3020','Verrouillé'],['#ffb040','Explosion']],
+    function(b,t){
+      const p=t%C;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++){const e=Math.max(Math.abs(x-15.5)/16,Math.abs(y-3.5)/4);setPx(b,x,y,30*e*e,4,6);}
+      const tx=22+6*osc(t,C,1), ty=3.5+2*osc(t,C,2);
+      const lock=p>=2.6&&p<4.8, lag=lock?0:.35;
+      const rx=22+6*Math.sin((((p-lag)%C)+C)%C/C*6.2832), ry=3.5+2*Math.sin((((p-lag)%C)+C)%C/C*6.2832*2);
+      if(p<4.4)sprite(b,["X.X",".X.","X.X"],tx-1,ty-1,{X:[170,170,180]});
+      const col=lock?[255,48,32]:[60,200,255], gap=lock?clamp(2.5-(p-2.6)*4,1.5,2.5):2.5;
+      for(const [dx,dy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+        setPx(b,rx+dx*gap,ry+dy*gap,col[0],col[1],col[2]);
+        setPx(b,rx+dx*(gap-1),ry+dy*gap,col[0],col[1],col[2]);
+      }
+      if(lock&&(Math.floor(p*6)%2===0))text3(b,'LOCK',1,1,[255,60,40]);
+      if(p>=3.6&&p<4.4){const q=(p-3.6)/.8;
+        for(let k=0;k<5;k++)addPx(b,lerp(0,tx,q)-k*q,lerp(7,ty,q)+k*.25,255,200,120,1-k*.2);}
+      if(p>=4.4&&p<5.6){const q=(p-4.4)/1.2;
+        disc(b,tx,ty,.5+q*5,[255,170,60],Math.max(0,1-q),true);
+        disc(b,tx,ty,.5+q*2.5,[255,255,220],Math.max(0,1-q*1.5),true);}
+    });
+}
+
+{
+  const C=6;
+  const MINI=[".RRR.","RGGGR","REGER","RGGGR","RGKGR",".RGR.","..R.."];
+  const SUITS=[[IM_R,IM_G],[[120,124,132],[70,72,80]],[IM_R,IM_G],[IM_G,IM_R],[[120,10,14],[200,150,40]]];
+  P('ironlegion','Iron Legion','MARVEL',
+    "Cinq armures alignées, dont celle de War Machine : leurs yeux s'allument un à un, pulsent ensemble, puis s'éteignent en sens inverse.",
+    'Sprites + allumage en cascade',C,
+    [['#be1214','Rouge'],['#787c84','War Machine'],['#d2f5ff','Yeux']],
+    function(b,t){
+      const p=t%C; clear(b,3,3,6);
+      SUITS.forEach(([r,g],i)=>{
+        const on=p<2.4?clamp((p-i*.4)/.2,0,1):p<4.2?.8+.2*osc(t,C,6):clamp((5.8-(4-i)*.35-p)/.2,0,1);
+        const eye=[g[0]*.3+IM_EYE[0]*on,g[1]*.3+IM_EYE[1]*on,g[2]*.3+IM_EYE[2]*on];
+        sprite(b,MINI,1+i*6,0,{R:r,G:g,K:IM_K,E:eye});
+        if(on>.3){addPx(b,2+i*6,2,90,180,255,.3*on);addPx(b,4+i*6,2,90,180,255,.3*on);}
+      });
+    });
+}
+
+
+/* ═════ JEUX PC — vingt ecrans de fin de partie, d'attente et de stream ═════
+   Pensees pour etre declenchees depuis Home Assistant pendant une session :
+   victoire, defaite, AFK, live, ping... */
+
+/* Grand texte 5x7 qui traverse toute la dalle une fois sur `dur`. */
+function grand(b,s,q,dur,col,out){
+  const tW=s.length*6;
+  const cells=cells7(s,Math.round(scrollOnce(tW,0,W-1,q,dur)),0);
+  ink(b,cells,col,out);
+  return cells;
+}
+const COEUR=[".X.X.","XXXXX","XXXXX",".XXX.","..X.."];
+const CRANE=[".XXX.","XXXXX","X.X.X","XXXXX",".X.X."];
+
+{
+  const C=4;
+  P('gg','GG','JEU VIDÉO',
+    "« GG » en grand, chaque lettre qui change de couleur, sous une pluie de confettis.",
+    'Arc-en-ciel + confettis',C,
+    [['#ff3c78','Rose'],['#3cc8ff','Cyan'],['#ffe040','Jaune']],
+    function(b,t){
+      const p=t%C; clear(b,4,3,10);
+      for(let i=0;i<22;i++){
+        const n=Math.max(1,Math.round(C*(4+rnd(i,2)*5)/10));
+        const y=((p/C*n+rnd(i,3))%1)*10-1, c=hsv(rnd(i,4),.8,1);
+        addPx(b,rnd(i,1)*W,y,c[0],c[1],c[2],.8);
+      }
+      ['G','G'].forEach((ch,i)=>{
+        const c=hsv(p/C+i*.5,.75,1);
+        ink(b,cells7(ch,10+i*6,0),c,[20,10,30]);
+      });
+    });
+}
+
+{
+  const T='VICTOIRE', C=q02((T.length*6+W)/13);
+  P('victoire','Victoire','JEU VIDÉO',
+    "« VICTOIRE » en lettres géantes traverse la dalle devant un soleil d'or qui tourne.",
+    'Rayons + grand défilement',C,
+    [['#ffc828','Or'],['#ffffff','Texte'],['#643200','Fond']],
+    function(b,t){
+      const p=t%C;
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+        const a=Math.atan2(y-3.5,(x-15.5)/2.5)/6.2832;
+        const k=((a*10+p/C*2)%1+1)%1<.5?1:.45;
+        setPx(b,x,y,150*k,90*k,10*k);
+      }
+      grand(b,T,p,C,[255,255,255],[120,70,0]);
+    });
+}
+
+{
+  const T='DÉFAITE', C=q02((T.length*6+W)/12);
+  const FISSURES=[[6,1],[17,-1],[26,1]];
+  P('defaite','Défaite','JEU VIDÉO',
+    "« DÉFAITE » en rouge sur un écran qui se fissure et grésille, couleurs lavées.",
+    'Fissures + grésillement + défilement',C,
+    [['#d21e1e','Rouge'],['#505055','Gris'],['#ffffff','Fissures']],
+    function(b,t){
+      const p=t%C, f=Math.floor(p*25), gr=.75+.25*rnd(f,1);
+      for(let y=0;y<H;y++)for(let x=0;x<W;x++){const n=10+rnd(x+f*7,y)*14; setPx(b,x,y,n*gr,n*gr,n*1.1*gr);}
+      const k=clamp(p/(C*.3),0,1);
+      FISSURES.forEach(([x0,d],i)=>{
+        let x=x0;
+        for(let y=0;y<H*k;y++){ addPx(b,x,y,180,180,190,.7); x+=((y+i)%3===0)?d:0; }
+      });
+      grand(b,T,p,C,[220,30,30],[30,0,0]);
+    });
+}
+
+{
+  const T1='GAME OVER', T2='INSERT COIN   ';
+  const D1=q02((T1.length*6+W)/14), D2=q02(scrollSpan(tw3(T2),0,W-1)/12), C=Math.round((D1+D2)*5)/5;
+  P('gameover','Game Over','JEU VIDÉO',
+    "Le classique des bornes d'arcade : « GAME OVER » en géant, puis « INSERT COIN » qui clignote en défilant.",
+    'Grand défilement + clignotement',C,
+    [['#ff2828','Rouge'],['#ffd200','Jaune'],['#000000','Fond']],
+    function(b,t){
+      const p=t%C; clear(b,0,0,0);
+      if(p<D1) grand(b,T1,p,D1,[255,40,40],[60,0,0]);
+      else if(Math.floor(p*3)%2===0) text3(b,T2,scrollOnce(tw3(T2),0,W-1,p-D1,D2),1,[255,210,0]);
+    });
+}
+
+{
+  const C=4;
+  const TOUR=[];
+  for(let x=0;x<W;x++)TOUR.push([x,0]);
+  for(let y=1;y<H;y++)TOUR.push([W-1,y]);
+  for(let x=W-2;x>=0;x--)TOUR.push([x,H-1]);
+  for(let y=H-2;y>0;y--)TOUR.push([0,y]);
+  P('pressstart','Press Start','JEU VIDÉO',
+    "Un cadre de borne d'arcade aux lumières qui tournent, et « PRESS » puis « START » qui clignotent au centre.",
+    'Chenillard + clignotement',C,
+    [['#ffffff','Texte'],['#ff3cc8','Chenillard'],['#3cc8ff','Chenillard']],
+    function(b,t){
+      const p=t%C; clear(b,2,2,8);
+      const n=TOUR.length, sh=p/C*n;
+      TOUR.forEach(([x,y],i)=>{
+        const v=((i-sh)%8+8)%8;
+        if(v<2){const c=hsv(i/n,.7,1);setPx(b,x,y,c[0],c[1],c[2]);}
+        else setPx(b,x,y,18,18,30);
+      });
+      const s=p<2?'PRESS':'START';
+      if(cyc(p,C,.5)<.7)text3(b,s,7,1,[255,255,255]);
+    });
+}
+
+{
+  const C=6;
+  P('afk','AFK','JEU VIDÉO',
+    "« AFK » respire doucement en gris pendant que trois Z s'envolent : parti chercher un café.",
+    'Respiration + particules',C,
+    [['#9aa0b4','Texte'],['#78b4ff','Z'],['#060a18','Fond']],
+    function(b,t){
+      const p=t%C; clear(b,2,3,10);
+      const k=.55+.45*(.5+.5*osc(t,C,2));
+      ink(b,cells7('AFK',1,0),[150*k,160*k,180*k]);
+      for(let i=0;i<3;i++){
+        const q=cyc(p+i*.667,C,2);
+        const a=q<.15?q/.15:1-(q-.15)/.85;
+        text3(b,'Z',21+i*3+Math.sin(q*6)*1,5-q*6,[120,180,255],{a:clamp(a,0,1)});
+      }
+    });
+}
+
+{
+  const C=6;
+  P('live','En direct','STREAM',
+    "Le point rouge pulse à côté de « LIVE », puis « ON AIR » : le stream est lancé.",
+    'Pulsation + alternance',C,
+    [['#ff1e1e','Point'],['#ffffff','Texte'],['#140000','Fond']],
+    function(b,t){
+      const p=t%C; clear(b,6,0,0);
+      const k=.55+.45*Math.abs(osc(t,C,6));
+      disc(b,3,3.5,2.4,[255*k,30*k,30*k],1);
+      disc(b,3,3.5,3.6,[255,30,30],.25*k,true);
+      if(p<3) ink(b,cells7('LIVE',8,0),[255,255,255]);
+      else text3(b,'ON AIR',8,1,[255,255,255]);
+    });
+}
+
+{
+  const PIECES=[
+    [[0,0],[0,1],[0,2],[0,3]],[[0,4],[0,5],[0,6],[0,7]],
+    [[1,0],[1,1],[1,2],[1,3]],[[1,4],[1,5],[1,6],[1,7]],
+    [[2,0],[3,0],[2,1],[3,1]],[[2,2],[3,2],[2,3],[3,3]],
+    [[2,4],[3,4],[2,5],[3,5]],[[2,6],[3,6],[2,7],[3,7]],
+  ];
+  const COUL=[[0,220,230],[170,60,255],[40,110,255],[255,140,0],[245,220,0],[40,220,90],[240,40,40],[245,220,0]];
+  const DT=.6, C=Math.round((PIECES.length*DT+1)*5)/5;
+  P('blocs','Blocs qui tombent','JEU VIDÉO',
+    "Huit pièces glissent une à une et s'empilent contre le bord, les colonnes complètes clignotent puis s'effacent.",
+    'Empilement + effacement',C,
+    [['#00dce6','Cyan'],['#f5dc00','Jaune'],['#aa3cff','Violet']],
+    function(b,t){
+      const p=t%C; clear(b,3,3,8);
+      for(let y=0;y<H;y+=2)for(let x=9;x<W;x+=4)setPx(b,x,y,14,14,24);
+      const flash=p>=PIECES.length*DT&&p<PIECES.length*DT+.6;
+      const gone=p>=PIECES.length*DT+.6;
+      PIECES.forEach((pc,i)=>{
+        const q=clamp((p-i*DT)/(DT*.9),0,1);
+        if(q<=0||gone)return;
+        const dx=(1-q*q)*26;   // une case = 2 colonnes : la pile est lisible
+        const c=flash&&Math.floor(p*8)%2?[255,255,255]:COUL[i];
+        for(const [x,y] of pc){setPx(b,x*2+dx,y,c[0],c[1],c[2]);setPx(b,x*2+1+dx,y,c[0]*.8,c[1]*.8,c[2]*.8);}
+      });
+    });
+}
+
+{
+  const TOUR=[];
+  for(let x=1;x<=30;x++)TOUR.push([x,1]);
+  for(let y=2;y<=6;y++)TOUR.push([30,y]);
+  for(let x=29;x>=1;x--)TOUR.push([x,6]);
+  for(let y=5;y>=2;y--)TOUR.push([1,y]);
+  const N=TOUR.length, C=q02(N/12), POMMES=[18,38,58];
+  P('snake','Snake','JEU VIDÉO',
+    "Le serpent fait le tour de la dalle, gobe trois pommes et grandit à chaque bouchée.",
+    'Parcours + croissance',C,
+    [['#28e650','Serpent'],['#ff2828','Pommes'],['#050a05','Fond']],
+    function(b,t){
+      const p=t%C; clear(b,2,5,2);
+      const head=Math.min(N-1,Math.floor(p/C*N));
+      const len=4+2*POMMES.filter(a=>a<=head).length;
+      for(const a of POMMES)if(a>head){const [x,y]=TOUR[a];setPx(b,x,y,255,40,40);}
+      for(let k=0;k<len;k++){
+        const i=head-k; if(i<0)break;
+        const [x,y]=TOUR[i], g=1-k/(len+2);
+        setPx(b,x,y,40*g,230*g,80*g);
+      }
+      const [hx,hy]=TOUR[head]; setPx(b,hx,hy,200,255,200);
+    });
+}
+
+{
+  const C=6.4, TX=C/2, TY=C/5;
+  const tri=u=>1-Math.abs(2*(((u%1)+1)%1)-1);
+  const bx=q=>1+29*tri(q/TX), by=q=>7*tri(q/TY+.2);
+  P('pong','Pong','JEU VIDÉO',
+    "Deux raquettes, une balle qui rebondit d'un bord à l'autre, le filet en pointillés : le tout premier jeu vidéo.",
+    'Rebonds + suivi',C,
+    [['#ffffff','Balle'],['#8cf0ff','Raquettes'],['#303040','Filet']],
+    function(b,t){
+      const p=t%C; clear(b,2,2,4);
+      for(let y=0;y<H;y+=2)setPx(b,15.5,y,40,40,56);
+      const x=bx(p), y=by(p);
+      const lp=clamp(Math.round(by(p-.12)),1,6), rp=clamp(Math.round(by(p+.08)),1,6);
+      for(let d=-1;d<=1;d++){setPx(b,0,lp+d,140,240,255);setPx(b,W-1,rp+d,140,240,255);}
+      for(let k=1;k<4;k++)addPx(b,bx(p-k*.03),by(p-k*.03),255,255,255,.25/k);
+      setPx(b,x,y,255,255,255);
+    });
+}
+
+{
+  const C=8, TX=C/3, TY=.8;
+  const tri=u=>1-Math.abs(2*(((u%1)+1)%1)-1);
+  const bx=q=>1+29*tri(q/TX), by=q=>6-4*tri(q/TY);
+  const RANG=[[255,60,60],[255,160,40]];
+  P('briques','Casse-briques','JEU VIDÉO',
+    "La balle rebondit entre la raquette et le mur de briques, et chaque touche fait sauter une brique.",
+    'Rebonds + destruction',C,
+    [['#ff3c3c','Briques'],['#ffa028','Briques'],['#ffffff','Balle']],
+    function(b,t){
+      const p=t%C; clear(b,2,2,6);
+      const cass=[new Set(),new Set()];
+      for(let k=0;(k+.5)*TY<=p;k++){
+        const col=Math.floor(bx((k+.5)*TY)/4);
+        if(!cass[1].has(col))cass[1].add(col); else cass[0].add(col);
+      }
+      const apparition=clamp(p/.3,0,1);
+      for(let r=0;r<2;r++)for(let c=0;c<8;c++){
+        if(cass[r].has(c))continue;
+        const col=RANG[r];
+        for(let x=c*4;x<c*4+3;x++)setPx(b,x,r,col[0]*apparition,col[1]*apparition,col[2]*apparition);
+      }
+      const x=bx(p), y=by(p);
+      for(let d=-2;d<=2;d++)setPx(b,Math.round(x)+d,7,140,200,255);
+      setPx(b,x,y,255,255,255);
+    });
+}
+
+{
+  const C=6;
+  const FACE=["GGGGGGGG","GGGGGGGG","GKKGGKKG","GKKGGKKG","GGGKKGGG","GGKKKKGG","GGKKKKGG","GGKGGKGG"];
+  P('creeper','Creeper','JEU VIDÉO',
+    "La tête pixelisée verte siffle en clignotant de plus en plus vite, explose dans un éclair, puis réapparaît dans la fumée.",
+    'Clignotement + explosion',C,
+    [['#50c850','Vert'],['#0a0a0a','Visage'],['#ffb43c','Explosion']],
+    function(b,t){
+      const p=t%C; clear(b,3,4,3);
+      const vis=p<4.2?1:p>5.2?clamp((p-5.2)/.6,0,1):0;
+      const hiss=p>=3&&p<4.2&&Math.sin((p-3)*(p-3)*40)>0;
+      if(vis>0)for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const ch=FACE[r][c];
+        let col=ch==='K'?[10,14,10]:[60+rnd(c,r)*60,160+rnd(c+9,r)*60,60+rnd(c,r+9)*40];
+        if(hiss)col=[240,255,240];
+        setPx(b,12+c,r,col[0]*vis,col[1]*vis,col[2]*vis);
+      }
+      if(p>=4.2&&p<5.4){
+        const q=(p-4.2)/1.2;
+        disc(b,15.5,3.5,1+q*14,[255,190,60],Math.max(0,1-q*1.2),true);
+        disc(b,15.5,3.5,1+q*6,[255,255,220],Math.max(0,1-q*2),true);
+        for(let k=0;k<10;k++){const a=k*.63;addPx(b,15.5+Math.cos(a)*q*16,3.5+Math.sin(a)*q*6,120,120,120,1-q);}
+      }
+    });
+}
+
+{
+  const C=8, COUPS=[1,2,3,4], SOINS=[4.8,5.2,5.6,6];
+  P('vies','Barre de vie','JEU VIDÉO',
+    "Cinq cœurs : quatre coups les vident un par un, le dernier bat seul, puis une potion les remplit à nouveau.",
+    'Dégâts + soin',C,
+    [['#ff2846','Cœurs'],['#50ff8c','Potion'],['#302030','Vide']],
+    function(b,t){
+      const p=t%C; clear(b,4,2,4);
+      const n=5-COUPS.filter(a=>p>=a).length+SOINS.filter(a=>p>=a).length;
+      const coup=COUPS.some(a=>p>=a&&p<a+.15), soin=SOINS.find(a=>p>=a&&p<a+.3);
+      const sh=coup?(Math.floor(p*40)%2?1:-1):0;
+      for(let i=0;i<5;i++){
+        const plein=i<n;
+        let c=plein?[255,40,70]:[48,32,48];
+        if(plein&&n===1)c=c.map(v=>v*(.55+.45*Math.abs(Math.sin(p*9))));
+        if(coup&&i===n)c=[255,255,255];
+        sprite(b,COEUR,1+i*6+sh,1,{X:c});
+        if(soin!=null&&i===n-1)for(let k=0;k<4;k++)addPx(b,2+i*6+rnd(k,i)*4,1+(p-soin)*-8+k,80,255,140,.8);
+      }
+    });
+}
+
+{
+  const C=4;
+  P('ko','K.O.','JEU VIDÉO',
+    "« K.O. » s'écrase à l'écran : secousse, éclair blanc, étincelles, lettres qui passent du jaune au rouge.",
+    'Impact + secousse + étincelles',C,
+    [['#ffdc28','Jaune'],['#ff2814','Rouge'],['#ffffff','Éclair']],
+    function(b,t){
+      const p=t%C; clear(b,6,0,0);
+      const sh=p<.6?Math.round((rnd(Math.floor(p*30),1)-.5)*3*(1-p/.6)):0;
+      const a=p<3.4?1:clamp((4-p)/.6,0,1);
+      for(const [x,y] of cells7('K.O.',4+sh,0)){
+        const g=y/6; setPx(b,x,y,255*a,lerp(220,40,g)*a,lerp(40,20,g)*a);
+      }
+      if(p<.5)for(let i=0;i<b.length;i++)b[i]+=255*(1-p/.5)*.7;
+      if(p<1.2)for(let k=0;k<12;k++){const q=p/1.2, an=k*.52;
+        addPx(b,15.5+Math.cos(an)*(4+q*14),3.5+Math.sin(an)*(2+q*5),255,200,80,1-q);}
+    });
+}
+
+{
+  const C=3;
+  P('oneup','1UP','JEU VIDÉO',
+    "« 1UP » monte en vert avec un petit rebond et des étincelles : une vie de plus.",
+    'Montée + rebond + étincelles',C,
+    [['#3cf050','Vert'],['#ffffff','Étincelles'],['#001000','Fond']],
+    function(b,t){
+      const p=t%C; clear(b,0,5,0);
+      const q=clamp(p/.6,0,1), y=Math.round(8*(1-easeOut(q))-(q>=1&&p<.9?1:0));
+      const a=p<2.4?1:clamp((C-p)/.6,0,1);
+      ink(b,cells7('1UP',8,y),[60*a,240*a,80*a],[0,40*a,0]);
+      for(let k=0;k<5;k++){const s=cyc(p+k*.2,C,1);if(s<.3)addPx(b,6+rnd(k,1)*20,rnd(k,2)*7,255,255,255,(1-s/.3)*a);}
+    });
+}
+
+{
+  const C=5;
+  const COFFRE=["..BBBBBB..",".BGGGGGGB.","BBBBBBBBBB","BGGBKKBGGB","BBBBBBBBBB","BGBBBBBBGB"];
+  P('butin','Coffre légendaire','JEU VIDÉO',
+    "Le coffre s'ouvre, un faisceau orange légendaire jaillit et les pièces d'or retombent en pluie.",
+    'Ouverture + faisceau + particules',C,
+    [['#a05a14','Bois'],['#e6b428','Or'],['#ff8c14','Légendaire']],
+    function(b,t){
+      const p=t%C; clear(b,4,2,2);
+      const ouv=p<1?0:p<1.4?(p-1)/.4:p<4.4?1:Math.max(0,1-(p-4.4)/.4);
+      if(ouv>0){
+        const k=ouv*(.75+.25*Math.abs(osc(t,C,10)));
+        for(let y=0;y<H;y++)for(let x=12;x<20;x++){const d=Math.abs(x-15.5)/4;addPx(b,x,y,255*k*(1-d),140*k*(1-d),20*k*(1-d),1);}
+        if(p>=1.2)for(let i=0;i<12;i++){
+          const q=((p-1.2)*.7+rnd(i,1))%1, vx=(rnd(i,2)-.5)*16;
+          addPx(b,15.5+vx*q,5-10*q+14*q*q,255,210,60,1-q*.5);
+        }
+      }
+      const lid=Math.round(ouv*2);
+      sprite(b,COFFRE.slice(0,2),11,2-lid,{B:[160,90,20],G:[230,180,40]});
+      sprite(b,COFFRE.slice(2),11,4,{B:[160,90,20],G:[230,180,40],K:[20,10,5]});
+    });
+}
+
+{
+  const C=5;
+  P('boss','Combat de boss','JEU VIDÉO',
+    "Bandes de danger jaunes et noires, « WARNING » qui clignote, puis « BOSS » en géant dans un écran qui tremble.",
+    'Bandes + alerte + secousse',C,
+    [['#ffd200','Danger'],['#ff1e1e','Alerte'],['#140000','Fond']],
+    function(b,t){
+      const p=t%C, k=.4+.6*Math.abs(osc(t,C,5));
+      clear(b,30*k,0,0);
+      const off=Math.floor(p*10);
+      for(let x=0;x<W;x++){const on=((x+off)%6)<3;
+        setPx(b,x,0,on?255:10,on?210:10,0); setPx(b,x,7,on?255:10,on?210:10,0);}
+      if(p<2.4){ if(Math.floor(p*6)%2===0)text3(b,'WARNING',2,1,[255,40,40]); }
+      else {
+        const sh=Math.round((rnd(Math.floor(p*20),3)-.5)*2);
+        ink(b,cells7('BOSS',4+sh,0),[255,255,255],[160,0,0]);
+      }
+    });
+}
+
+{
+  const C=8, N=C*8;
+  const val=s=>{const m=((s%N)+N)%N, r=rnd(m,77); return r<.08?90+rnd(m,5)*70:14+rnd(m,6)*30;};
+  const couleur=v=>v<50?[40,230,90]:v<100?[255,200,0]:[255,50,40];
+  P('ping','Ping','JEU VIDÉO',
+    "La latence en direct : la valeur en millisecondes à gauche, l'historique en barres à droite, vert, jaune ou rouge selon le lag.",
+    'Valeur + histogramme défilant',C,
+    [['#28e65a','Bon'],['#ffc800','Moyen'],['#ff3228','Lag']],
+    function(b,t){
+      const p=t%C; clear(b,2,3,6);
+      const s0=Math.floor(p*8);
+      for(let i=0;i<14;i++){
+        const v=val(s0-13+i), h=Math.max(1,Math.round(v/160*8)), c=couleur(v);
+        for(let y=H-h;y<H;y++)setPx(b,18+i,y,c[0],c[1],c[2]);
+      }
+      const v=Math.round(val(s0));
+      text3(b,String(v),1,1,couleur(v));
+      text3(b,'MS',1+tw3(String(v)),1,[140,150,170]);
+    });
+}
+
+{
+  const C=4;
+  const TOUCHES=[];
+  for(let r=0;r<3;r++)for(let x=(r%2);x<W;x+=2)TOUCHES.push([x,r*2]);
+  for(let x=0;x<W;x+=2)if(x<9||x>22)TOUCHES.push([x,6]);
+  for(let x=9;x<=22;x++)TOUCHES.push([x,6]);
+  P('clavier','Clavier RVB','JEU VIDÉO',
+    "Un clavier gamer vu de dessus : vague arc-en-ciel sur toutes les touches et ondes blanches à chaque frappe.",
+    'Vague RVB + ondes',C,
+    [['#ff3c3c','Rouge'],['#3cff78','Vert'],['#3c78ff','Bleu']],
+    function(b,t){
+      const p=t%C; clear(b,1,1,2);
+      for(const [x,y] of TOUCHES){const c=hsv(x/W*.8-p/C,1,.75);setPx(b,x,y,c[0],c[1],c[2]);}
+      const n=Math.round(C/.35);
+      for(let k=0;k<n;k++){
+        const q=(p-k*C/n)/.6; if(q<0||q>1)continue;
+        const [kx,ky]=TOUCHES[Math.floor(rnd(k,9)*TOUCHES.length)];
+        for(const [x,y] of TOUCHES){const d=Math.hypot(x-kx,(y-ky)*1.5)-q*9;
+          if(Math.abs(d)<1.2)addPx(b,x,y,255,255,255,(1-q)*.8);}
+      }
+    });
+}
+
+{
+  const C=6;
+  P('ace','ACE','JEU VIDÉO',
+    "Cinq crânes s'allument un à un, un par élimination, puis « ACE » s'affiche en or : toute l'équipe adverse est tombée.",
+    'Compteur + titre doré',C,
+    [['#ff2828','Éliminations'],['#ffc828','Or'],['#140a00','Fond']],
+    function(b,t){
+      const p=t%C; clear(b,6,3,0);
+      if(p<3.2){
+        for(let i=0;i<5;i++){
+          const on=p>=.3+i*.5, fl=on&&p<.45+i*.5;
+          const c=!on?[40,30,30]:p>=2.6?[255,200,40]:fl?[255,255,255]:[255,40,40];
+          sprite(b,CRANE,1+i*6,1,{X:c});
+        }
+      } else {
+        const q=p-3.2, a=clamp(q/.3,0,1)*clamp((C-p)/.4,0,1);
+        for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+          const an=Math.atan2(y-3.5,(x-15.5)/2.5)/6.2832, r=((an*12+q*.4)%1+1)%1<.5;
+          if(r)addPx(b,x,y,90*a,55*a,0,1);
+        }
+        ink(b,cells7('ACE',7,0),[255,210,50],[80,40,0],0,W-1,a);
+      }
+    });
+}
+
+
+/* ═════ MAISON ET METEO — notifications facon LaMetric ═════
+   Une icone animee de 9 colonnes a gauche, un filet, et le message qui
+   defile a droite. Faites pour le service wled_anim.flash : sonnette,
+   courrier, lessive terminee, meteo du jour... */
+function notif(id,name,tag,desc,fx,txt,accent,cols,icone){
+  const T=txt+'   ', span=scrollSpan(tw3(T),11,W-1), C=q02(span/11), v=span/C;
+  P(id,name,tag,desc,fx,C,cols,function(b,t){
+    const p=t%C; clear(b,0,0,0);
+    icone(b,p,C,t);
+    for(let y=0;y<H;y++)setPx(b,9,y,accent[0]*.22,accent[1]*.22,accent[2]*.22);
+    text3(b,T,scrollLoop(tw3(T),11,W-1,p,v),1,[255,255,255],{x0:11,x1:W-1});
+  });
+}
+const onde=q=>q<.5?easeOut(q*2):1-easeOut((q-.5)*2);
+function nuage(b,x,y,col){
+  disc(b,x+1,y+1.2,1.6,col,1); disc(b,x+3.2,y,2.1,col,1); disc(b,x+5.4,y+1.2,1.6,col,1);
+  for(let i=x+1;i<=x+6;i++)setPx(b,i,y+2,col[0],col[1],col[2]);
+}
+
+notif('sonnette','Sonnette','MAISON',"La cloche se balance et sonne à gauche pendant que « On sonne à la porte » défile.",
+  'Icône animée + défilement','ON SONNE A LA PORTE',[255,200,40],
+  [['#ffc828','Cloche'],['#ffffff','Texte'],['#000000','Fond']],
+  (b,p,C)=>{const q=cyc(p,C,1.2), sw=Math.round(Math.sin(q*6.2832*2));
+    sprite(b,["...X...","..XXX..",".XXXXX.",".XXXXX.","XXXXXXX"],1+sw,1,{X:[255,200,40]});
+    setPx(b,4-sw,6,255,235,150);
+    if(q<.5)for(const y of [2,4]){setPx(b,0,y,255,220,120);setPx(b,8,y,255,220,120);}});
+
+notif('porte','Porte ouverte','MAISON',"La porte d'entrée s'ouvre sur un rai de lumière et se referme, « Porte entrée ouverte » défile.",
+  'Icône animée + défilement','PORTE ENTREE OUVERTE',[255,180,60],
+  [['#aa6428','Bois'],['#ffc85a','Lumière'],['#ffffff','Texte']],
+  (b,p,C)=>{const o=onde(cyc(p,C,3)), w=1+Math.round(4*(1-o));
+    for(let y=0;y<H;y++){setPx(b,1,y,110,65,25);setPx(b,7,y,110,65,25);}
+    for(let x=1;x<=7;x++)setPx(b,x,0,110,65,25);
+    for(let y=1;y<H;y++)for(let x=2;x<=6;x++){
+      if(x<2+w){setPx(b,x,y,170,100,40);} else setPx(b,x,y,255*o,200*o,90*o);
+    }
+    setPx(b,1+w,4,255,220,120);});
+
+notif('courrier','Courrier','MAISON',"L'enveloppe sautille, une pastille rouge clignote : « Vous avez du courrier ».",
+  'Icône animée + défilement','VOUS AVEZ DU COURRIER',[230,230,245],
+  [['#e6e6f5','Enveloppe'],['#ff3232','Pastille'],['#ffffff','Texte']],
+  (b,p,C)=>{const q=cyc(p,C,1.5), dy=q<.2?-Math.round(Math.sin(q/.2*3.1416)):0;
+    sprite(b,["LLLLLLLLL","LLWWWWWLL","LWLWWWLWL","LWWLWLWWL","LWWWLWWWL","LLLLLLLLL"],0,1+dy,{L:[130,130,160],W:[235,235,245]});
+    if(q<.6){setPx(b,8,0,255,40,40);setPx(b,7,0,255,40,40,.5);}});
+
+notif('colis','Colis livré','MAISON',"Le carton tombe, rebondit et soulève un peu de poussière : « Colis livré ».",
+  'Icône animée + défilement','COLIS LIVRE',[200,140,70],
+  [['#c88c46','Carton'],['#e6d296','Scotch'],['#ffffff','Texte']],
+  (b,p,C)=>{const q=cyc(p,C,3);
+    let y=3; if(q<.25)y=Math.round(-5+8*Math.pow(q/.25,2)); else if(q<.35)y=3-Math.round(Math.sin((q-.25)/.1*3.1416));
+    sprite(b,["DDDTDDD","BBBTBBB","BBBTBBB","BBBBBBB","BBBBBBB"],1,y,{D:[160,105,50],B:[200,140,70],T:[230,210,150]});
+    if(q>=.25&&q<.45){const k=1-(q-.25)/.2;setPx(b,0,7,150,130,110,k);setPx(b,8,7,150,130,110,k);setPx(b,0,6,150,130,110,k*.5);setPx(b,8,6,150,130,110,k*.5);}});
+
+notif('lessive','Lessive terminée','MAISON',"Le tambour du lave-linge tourne derrière le hublot : « Lessive terminée ».",
+  'Icône animée + défilement','LESSIVE TERMINEE',[120,200,255],
+  [['#c8cdd7','Machine'],['#50a0ff','Eau'],['#ffffff','Texte']],
+  (b,p,C)=>{
+    for(let y=0;y<H;y++)for(let x=0;x<=8;x++)setPx(b,x,y,y===0?120:200,y===0?125:205,y===0?135:215);
+    setPx(b,1,0,255,80,60); setPx(b,3,0,80,255,120);
+    disc(b,4,4.5,2.6,[60,64,78],1); disc(b,4,4.5,1.9,[20,40,70],1);
+    const a=cyc(p,C,.8)*6.2832;
+    for(const d of [0,3.1416]){setPx(b,4+Math.cos(a+d)*1.3,4.5+Math.sin(a+d)*1.3,80,160,255);}});
+
+notif('poubelles','Poubelles','MAISON',"Le couvercle de la poubelle se soulève sur une odeur douteuse : « Sortir les poubelles ».",
+  'Icône animée + défilement','SORTIR LES POUBELLES',[60,180,80],
+  [['#3cb450','Bac'],['#a0a0a0','Odeur'],['#ffffff','Texte']],
+  (b,p,C)=>{const q=cyc(p,C,2), o=q<.5&&onde(q*2)>.5;
+    for(let y=3;y<H;y++)for(let x=2;x<=6;x++)setPx(b,x,y,x%2?50:70,x%2?150:185,x%2?65:85);
+    const ly=o?1:2;
+    for(let x=1;x<=7;x++)setPx(b,x+(o?1:0),ly,40,130,55);
+    if(o)for(let k=0;k<3;k++)setPx(b,3+k*1.5+Math.sin(q*20+k),0,150,150,120,.7);});
+
+notif('bienvenue','Bienvenue','MAISON',"Les fenêtres de la maison s'allument une à une : « Bienvenue à la maison ».",
+  'Icône animée + défilement','BIENVENUE A LA MAISON',[255,190,80],
+  [['#e65a28','Toit'],['#ffd060','Fenêtres'],['#ffffff','Texte']],
+  (b,p,C)=>{const q=cyc(p,C,3);
+    for(let r=0;r<4;r++)for(let x=4-r;x<=4+r;x++)setPx(b,x,r,230,90,40);
+    for(let y=4;y<H;y++)for(let x=1;x<=7;x++)setPx(b,x,y,215,195,155);
+    setPx(b,4,6,110,60,25); setPx(b,4,7,110,60,25);
+    if(q>.15)setPx(b,2,5,255,210,90);
+    if(q>.35)setPx(b,6,5,255,210,90);});
+
+notif('bonnenuit','Bonne nuit','MAISON',"Un croissant de lune et des étoiles qui scintillent : « Bonne nuit ».",
+  'Icône animée + défilement','BONNE NUIT',[255,230,140],
+  [['#ffe68c','Lune'],['#b4c8ff','Étoiles'],['#ffffff','Texte']],
+  (b,p,C,t)=>{
+    for(let y=0;y<H;y++)for(let x=0;x<=8;x++){
+      const d1=Math.hypot(x-4,y-3.5), d2=Math.hypot(x-5.8,y-2.6);
+      if(d1<3.1&&d2>=2.9)setPx(b,x,y,255,230,140);
+    }
+    [[0,1],[8,6],[8,0],[1,7]].forEach(([x,y],i)=>{const k=.3+.7*Math.abs(osc(t,C,2+i));setPx(b,x,y,180*k,200*k,255*k);});});
+
+notif('reveil','Réveil','MAISON',"Le réveil tremble en sonnant, cloches en l'air : « Debout là-dedans ».",
+  'Icône animée + défilement','DEBOUT LA DEDANS',[255,120,60],
+  [['#ffffff','Cadran'],['#ffc828','Cloches'],['#ff783c','Vibration']],
+  (b,p,C)=>{const q=cyc(p,C,1.5), sh=q<.6?(Math.floor(p*20)%2?1:-1):0;
+    ring(b,4+sh,4.4,2.8,.6,[240,240,240],1);
+    setPx(b,4+sh,3,255,255,255); setPx(b,4+sh,2,255,255,255); setPx(b,5+sh,4.4,255,120,60);
+    for(const x of [1,2,6,7])setPx(b,x+sh,0,255,200,40);
+    if(sh){setPx(b,0,3,255,120,60,.6);setPx(b,8,5,255,120,60,.6);}});
+
+notif('alarme','Alarme activée','SÉCURITÉ',"Le cadenas se referme d'un coup, puis la diode rouge clignote : « Alarme activée ».",
+  'Icône animée + défilement','ALARME ACTIVEE',[255,50,50],
+  [['#dcb43c','Cadenas'],['#ff3232','Diode'],['#ffffff','Texte']],
+  (b,p,C)=>{const q=cyc(p,C,3), lift=q<.3?Math.round((1-q/.3)*2):0;
+    for(let y=4;y<H;y++)for(let x=1;x<=7;x++)setPx(b,x,y,220,180,60);
+    setPx(b,4,5,40,30,10); setPx(b,4,6,40,30,10);
+    for(let y=1;y<=3;y++){setPx(b,2,y-lift,160,165,175);setPx(b,6,y-lift,160,165,175);}
+    for(let x=3;x<=5;x++)setPx(b,x,1-lift,160,165,175);
+    if(q>=.3&&Math.floor(p*3)%2===0)setPx(b,8,0,255,40,40);});
+
+notif('fenetre','Fenêtre ouverte','MAISON',"La fenêtre est restée ouverte, le rideau flotte au vent : « Fenêtre ouverte ».",
+  'Icône animée + défilement','FENETRE OUVERTE',[120,190,255],
+  [['#e6e6eb','Cadre'],['#78beff','Ciel'],['#ff5a5a','Rideau']],
+  (b,p,C)=>{
+    for(let y=0;y<H;y++)for(let x=0;x<=8;x++){
+      const cadre=x===0||x===8||y===0||y===7||x===4||y===3;
+      if(cadre)setPx(b,x,y,225,225,232); else setPx(b,x,y,60+y*12,120+y*10,220);
+    }
+    const q=cyc(p,C,2);
+    for(let y=1;y<7;y++)setPx(b,1+Math.round(1+Math.sin(q*6.2832+y*.8)),y,255,90,90);
+    setPx(b,5+((q*4)%3),2,255,255,255,.6); setPx(b,5+(((q*4)+1.5)%3),5,255,255,255,.6);});
+
+notif('cafe','Café prêt','MAISON',"La tasse fume doucement : « Le café est prêt ».",
+  'Icône animée + défilement','LE CAFE EST PRET',[200,140,90],
+  [['#ffffff','Tasse'],['#784628','Café'],['#bebebe','Vapeur']],
+  (b,p,C)=>{
+    for(let y=4;y<H;y++)for(let x=1;x<=6;x++)setPx(b,x,y,240,240,240);
+    for(let x=2;x<=5;x++)setPx(b,x,4,120,70,40);
+    setPx(b,7,5,240,240,240); setPx(b,7,6,240,240,240);
+    for(let k=0;k<2;k++){const q=cyc(p+k*.7,C,1.4);
+      for(let s=0;s<3;s++){const y=3-q*3-s;if(y<0)continue;setPx(b,2.5+k*2+Math.sin(q*6+s)*.8,y,190,190,195,.8*(1-q));}}});
+
+notif('anniversaire','Anniversaire','FÊTE',"Le gâteau et ses trois bougies qui vacillent : « Joyeux anniversaire ».",
+  'Icône animée + défilement','JOYEUX ANNIVERSAIRE',[255,110,180],
+  [['#ff6eb4','Gâteau'],['#ffc828','Flammes'],['#ffffff','Crème']],
+  (b,p)=>{
+    const L=[[250,245,240],[255,110,180],[250,245,240],[255,110,180]];
+    for(let y=4;y<H;y++)for(let x=1;x<=7;x++){const c=L[y-4];setPx(b,x,y,c[0],c[1],c[2]);}
+    [[2,[80,160,255]],[4,[255,220,60]],[6,[80,230,120]]].forEach(([x,c],i)=>{
+      setPx(b,x,3,c[0],c[1],c[2]); setPx(b,x,2,c[0],c[1],c[2]);
+      const f=rnd(Math.floor(p*12),i)<.5; setPx(b,x,1,255,f?220:150,f?80:30); if(f)setPx(b,x,0,255,120,20,.5);});});
+
+notif('appel','Appel entrant','MAISON',"Le combiné vibre et les ondes s'échappent : « Appel entrant ».",
+  'Icône animée + défilement','APPEL ENTRANT',[60,220,100],
+  [['#3cdc64','Combiné'],['#ffffff','Ondes'],['#000000','Fond']],
+  (b,p,C)=>{const q=cyc(p,C,1), sh=q<.5?(Math.floor(p*24)%2):0;
+    sprite(b,["XX.....","XXX....",".XX....","..XX...","...XX..","....XXX",".....XX"],sh,1,{X:[60,220,100]});
+    if(q<.5){setPx(b,6,0,255,255,255,.8);setPx(b,8,1,255,255,255,.8);setPx(b,8,0,255,255,255,.5);}});
+
+notif('fuite','Fuite d\'eau','SÉCURITÉ',"Une goutte tombe du tuyau et la flaque s'étale : « Fuite détectée ».",
+  'Icône animée + défilement','FUITE DETECTEE',[60,150,255],
+  [['#3c96ff','Eau'],['#8c919b','Tuyau'],['#ffffff','Texte']],
+  (b,p,C,t)=>{
+    for(let x=0;x<=8;x++)setPx(b,x,0,140,145,155);
+    setPx(b,4,1,140,145,155);
+    const q=cyc(p,C,.8);
+    if(q<.7)setPx(b,4,2+q/.7*4.5,80,170,255); else {setPx(b,3,6,120,200,255);setPx(b,5,6,120,200,255);}
+    const w=2+Math.round(1.5+1.5*osc(t,C,1));
+    for(let x=4-w;x<=4+w;x++)setPx(b,x,7,40,110,220);});
+
+/* ── Meteo : meme gabarit, icone du temps qu'il fait ── */
+notif('soleil','Soleil','MÉTÉO',"Le soleil et ses rayons qui tournent : « Ensoleillé ».",
+  'Icône animée + défilement','ENSOLEILLE',[255,210,40],
+  [['#ffd228','Soleil'],['#ff9628','Rayons'],['#ffffff','Texte']],
+  (b,p,C)=>{disc(b,4,3.5,2.2,[255,210,40],1);
+    const a0=cyc(p,C,4)*.7854;
+    for(let k=0;k<8;k++){const a=a0+k*.7854;addPx(b,4+Math.cos(a)*3.6,3.5+Math.sin(a)*3.6,255,150,40,.9);}});
+
+notif('nuageux','Nuageux','MÉTÉO',"Deux nuages dérivent l'un devant l'autre : « Nuageux ».",
+  'Icône animée + défilement','NUAGEUX',[200,205,215],
+  [['#d2d7e1','Nuage'],['#8c919b','Nuage'],['#ffffff','Texte']],
+  (b,p,C,t)=>{nuage(b,1+osc(t,C,1),1,[120,125,135]); nuage(b,-1-osc(t,C,1)*1.2,3,[215,220,230]);});
+
+notif('pluie','Pluie','MÉTÉO',"La pluie tombe du nuage : « Pluie prévue ».",
+  'Icône animée + défilement','PLUIE PREVUE',[80,160,255],
+  [['#8c919b','Nuage'],['#50a0ff','Gouttes'],['#ffffff','Texte']],
+  (b,p,C)=>{nuage(b,0,0,[140,145,155]);
+    [1,3,5,7].forEach((x,i)=>{const y=3+((cyc(p,C,.6)+i*.27)%1)*5;setPx(b,x,y,80,160,255);setPx(b,x,y-1,80,160,255,.4);});});
+
+notif('neige','Neige','MÉTÉO',"Les flocons tombent en tournoyant sous le nuage : « Neige ».",
+  'Icône animée + défilement','NEIGE',[235,240,255],
+  [['#b4b9c3','Nuage'],['#ffffff','Flocons'],['#000000','Fond']],
+  (b,p,C)=>{nuage(b,0,0,[180,185,195]);
+    [1,4,7,2.5,5.5].forEach((x,i)=>{const q=(cyc(p,C,1.6)+i*.21)%1;setPx(b,x+Math.sin(q*9+i),3+q*5,240,245,255);});});
+
+notif('orage','Orage','MÉTÉO',"Nuage noir, éclair qui zèbre la dalle et flash blanc : « Orage ».",
+  'Icône animée + défilement','ORAGE',[255,230,60],
+  [['#50505a','Nuage'],['#ffe63c','Éclair'],['#ffffff','Flash']],
+  (b,p,C)=>{const q=cyc(p,C,2), fl=q<.12;
+    if(fl)for(let y=0;y<H;y++)for(let x=0;x<=8;x++)setPx(b,x,y,70,70,90);
+    nuage(b,0,0,[80,80,95]);
+    if(q<.3)for(const [x,y] of [[5,3],[4,4],[5,4],[4,5],[3,6],[4,6],[3,7]])setPx(b,x,y,255,230,60);});
+
+notif('brouillard','Brouillard','MÉTÉO',"Des nappes de brume glissent à des vitesses différentes : « Brouillard ».",
+  'Icône animée + défilement','BROUILLARD',[170,175,185],
+  [['#aaafb9','Brume'],['#6e737d','Brume'],['#ffffff','Texte']],
+  (b,p,C)=>{[1,3,5,7].forEach((y,i)=>{const off=cyc(p,C,2+i*.7)*9;
+    for(let x=0;x<=8;x++){const u=((x+off*(i%2?1:-1))%9+9)%9;if(u<6)setPx(b,x,y,170-i*18,175-i*18,185-i*18);}});});
+
+notif('vent','Vent fort','MÉTÉO',"Des bourrasques traversent l'icône en traînées : « Vent fort ».",
+  'Icône animée + défilement','VENT FORT',[180,220,255],
+  [['#b4dcff','Vent'],['#ffffff','Texte'],['#000000','Fond']],
+  (b,p,C)=>{[[1,0],[4,.35],[6,.7]].forEach(([y,d])=>{const q=(cyc(p,C,1.2)+d)%1, x0=-4+q*14;
+    for(let k=0;k<5;k++)setPx(b,x0-k,y,180,220,255,1-k*.18);
+    if(y===4)setPx(b,x0+1,y-1,180,220,255,.8);});});
 
 
 /* ═══════════════════════════════════════════════════════════════════════

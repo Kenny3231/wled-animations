@@ -9,7 +9,8 @@
     "build": "node scripts/build.js",
     "sync-hub": "node scripts/sync-hub.js",
     "gif": "node tools/export-gif.js",
-    "player": "node tools/wled-player.js"
+    "player": "node tools/wled-player.js",
+    "preview": "node scripts/preview.js"
   },
   "engines": {
     "node": ">=18"

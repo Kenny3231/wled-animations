@@ -2,7 +2,7 @@
 
 Réalisé par domo-lab31 - Kenny3231
 
-141 animations pixel pour une dalle 32 colonnes × 8 lignes (256 LEDs),
+241 animations pixel pour une dalle 32 colonnes × 8 lignes (256 LEDs),
 en GIF natifs ou diffusées en UDP temps réel. Pas d'usermod à recompiler,
 pas de firmware à reflasher. Les animations sont rangées par format de
 dalle : le pack 32 × 8 est le premier, les autres formats suivront.
@@ -13,7 +13,7 @@ dalle : le pack 32 × 8 est le premier, les autres formats suivront.
 
 | Chemin | Rôle |
 |---|---|
-| `packs/32x8/wled-animations.js` | **La source de vérité.** Moteur 32×8, polices pixel, sprites, les 141 animations. Calcul pur, aucune E/S. |
+| `packs/32x8/wled-animations.js` | **La source de vérité.** Moteur 32×8, polices pixel, sprites, les 241 animations. Calcul pur, aucune E/S. |
 | `packs/32x8/categories.json` | Le classement par thème, repris par la galerie et le catalogue. |
 | `site/gallery.html` | Gabarit de la galerie. Le moteur y est injecté au build, jamais recopié. |
 | `scripts/test.js` | Garde-fous : identifiants, métadonnées, catégories, 20 s de rendu par animation. |
@@ -29,7 +29,8 @@ mêmes fonctions de rendu : un seul fichier, injecté ou copié tel quel.
 
 ```bash
 npm install          # une seule dépendance : gifenc
-npm test             # vérifie les 141 animations
+npm test             # vérifie les 241 animations
+npm run preview -- norris toulon   # planche PNG pour relire des animations
 npm run build        # construit dist/ : galerie, catalogue, GIF
 npm run sync-hub     # recopie le moteur dans l'add-on wled-hub/
 ```
@@ -51,7 +52,7 @@ le hub ira lire. Une animation cassée n'arrive donc jamais sur le site.
 index.json                      { "32x8": "packs/32x8/index.json" }
 packs/32x8/index.json           catégories, métadonnées, empreintes SHA-256
 packs/32x8/wled-animations.js   le moteur du pack
-packs/32x8/gif/<id>.gif         les 141 GIF, 25 fps, 128 couleurs
+packs/32x8/gif/<id>.gif         les 241 GIF, 25 fps, 128 couleurs
 ```
 
 Le format de `index.json` est celui annoncé dans `wled-hub/hub.js`, au-dessus
@@ -84,26 +85,74 @@ Repository access*.
 1. Un `ANIMS.push({ id, name, tag, desc, fx, speed, cols, render })` dans
    `packs/32x8/wled-animations.js` (voir « Personnalisation » plus bas).
 2. Son identifiant dans la bonne catégorie de `packs/32x8/categories.json`.
-3. Sa durée d'export dans la table `CLIPS` de `tools/export-gif.js`.
-4. `npm test`, puis `npm run sync-hub` pour l'add-on.
-5. Commit et push : le site se met à jour tout seul.
+3. Sa durée d'export : un `clip: { seconds, exact }` dans l'animation (le
+   raccourci `P()` du lot 4 le pose tout seul), ou à défaut une ligne dans la
+   table `CLIPS` de `tools/export-gif.js`.
+4. `npm run preview -- <id>` pour la relire sans dalle : une planche PNG dans
+   `preview/`, plusieurs images réparties sur le cycle.
+5. `npm test`, puis `npm run sync-hub` pour l'add-on.
+6. Commit et push : le site se met à jour tout seul.
 
 ### Fan-art
 
 Les animations évoquent des univers dont les noms et logos appartiennent à
-leurs détenteurs (F1, Red Bull Racing, Marvel, Overwatch, Stade
-Toulousain…). C'est du fan-art non officiel, sans lien avec eux.
+leurs détenteurs (F1, écuries et pilotes, clubs du Top 14, Champions Cup,
+Marvel, jeux vidéo…). C'est du fan-art non officiel, sans lien avec eux.
 
 ---
 
-## Les 141 animations
+## Les 241 animations
 
-**F1 / Red Bull (28)** — `f1lights` feux de départ · `max` Verstappen · `rbr`
-la monoplace · `drs` · `pitstop` · `podium` · `tyres` · `sectors` ·
-`lightsout` · `teamradio` · `champion` · `gridpos` · `fastlap` · `safetycar` ·
-`redflag` · `greenflag` · `blueflag` · `chequered` · `fuelgauge` · `speedtrap` ·
-`gearshift` · `revlights` · `laptimer` · `overtake` · `rainrace` · `pitlimiter` ·
-`constructors` · `pitboard`
+Liste générée depuis `packs/32x8/categories.json`.
+
+**F1 / Red Bull (28)** — `f1lights` · `max` · `rbr` · `drs` · `pitstop` ·
+`podium` · `tyres` · `sectors` · `lightsout` · `teamradio` · `champion` ·
+`gridpos` · `fastlap` · `safetycar` · `redflag` · `greenflag` · `blueflag` ·
+`chequered` · `fuelgauge` · `speedtrap` · `gearshift` · `revlights` ·
+`laptimer` · `overtake` · `rainrace` · `pitlimiter` · `constructors` ·
+`pitboard`
+
+**F1 2026 · Pilotes (21)** — `norris` · `piastri` · `leclerc` · `hamilton` ·
+`hadjar` · `russell` · `antonelli` · `alonso` · `stroll` · `gasly` ·
+`colapinto` · `albon` · `sainz` · `lawson` · `lindblad` · `ocon` · `bearman` ·
+`hulkenberg` · `bortoleto` · `perez` · `bottas`
+
+**F1 2026 · Écuries (11)** — `mclaren` · `ferrari` · `mercedes` ·
+`astonmartin` · `alpine` · `williams` · `racingbulls` · `haas` · `audi` ·
+`cadillac` · `grille2026`
+
+**Top 14 & Europe (15)** — `top14` · `championscup` · `ubb` · `toulon` ·
+`clermont` · `larochelle` · `racing92` · `stadefrancais` · `castres` · `pau` ·
+`bayonne` · `lyon` · `montpellier` · `perpignan` · `vannes`
+
+**Rugby / Stade Toulousain (10)** — `stade` · `essai` · `scoreboard` · `haka`
+· `dropgoal` · `melee` · `matchclock` · `carton` · `brennus` · `supporters`
+
+**Iron Man (12)** — `ironman` · `arcreactor` · `repulsor` · `unibeam` ·
+`ironflight` · `suitup` · `nanotech` · `jarvis` · `ironhud` · `iamironman` ·
+`hotrod` · `ironlegion`
+
+**Super-héros (13)** — `marvel` · `thor` · `spidey` · `shield` · `hulk` ·
+`infinity` · `batsignal` · `superman` · `speedster` · `venom` · `groot` ·
+`wakanda` · `antman`
+
+**Deadpool (6)** — `deadpool` · `chimichanga` · `regen` · `dpeyes` · `bullets`
+· `taco`
+
+**Jeu vidéo (34)** — `overwatch` · `payload` · `ultimate` · `healthbar` ·
+`respawn` · `headshot` · `loading` · `achievement` · `combo` · `manabar` ·
+`levelup` · `pacman` · `invaders` · `trophy` · `gg` · `victoire` · `defaite` ·
+`gameover` · `pressstart` · `afk` · `live` · `blocs` · `snake` · `pong` ·
+`briques` · `creeper` · `vies` · `ko` · `oneup` · `butin` · `boss` · `ping` ·
+`clavier` · `ace`
+
+**Maison & notifications (17)** — `sonnette` · `porte` · `courrier` · `colis`
+· `lessive` · `poubelles` · `bienvenue` · `bonnenuit` · `reveil` · `alarme` ·
+`fenetre` · `cafe` · `anniversaire` · `appel` · `fuite` · `message` ·
+`compose`
+
+**Météo (11)** — `rainstorm` · `storm` · `aurora` · `meteor` · `soleil` ·
+`nuageux` · `pluie` · `neige` · `orage` · `brouillard` · `vent`
 
 **Matrix (10)** — `matrix` · `matrixblue` · `matrixred` · `matrixgold` ·
 `wakeup` · `pills` · `glitch` · `binary` · `decrypt` · `terminal`
@@ -112,24 +161,8 @@ la monoplace · `drs` · `pitstop` · `podium` · `tyres` · `sectors` ·
 `powerup` · `chibi` · `rasengan` · `bijuu` · `jollyroger` · `titanwings` ·
 `scouter` · `sakura`
 
-**Super-héros (14)** — `marvel` · `arcreactor` · `thor` · `spidey` · `shield` ·
-`hulk` · `infinity` · `batsignal` · `superman` · `speedster` · `venom` ·
-`groot` · `wakanda` · `antman`
-
-**Deadpool (6)** — `deadpool` · `chimichanga` · `regen` · `dpeyes` ·
-`bullets` · `taco`
-
-**Jeu vidéo (14)** — `overwatch` · `payload` · `ultimate` · `healthbar` ·
-`respawn` · `headshot` · `loading` · `achievement` · `combo` · `manabar` ·
-`levelup` · `pacman` · `invaders` · `trophy`
-
-**Rugby / Stade Toulousain (10)** — `stade` · `essai` · `scoreboard` · `haka` ·
-`dropgoal` · `melee` · `matchclock` · `carton` · `brennus` · `supporters`
-
 **Saisons et fêtes (8)** — `snow` · `xmastree` · `fireworks` · `halloween` ·
 `hearts` · `autumn` · `confetti` · `sunrise`
-
-**Météo (4)** — `rainstorm` · `storm` · `aurora` · `meteor`
 
 **Utilitaires (12)** — `countdown` · `clockdemo` · `thermo` · `wifi` ·
 `battery` · `alert` · `checkok` · `errorx` · `heartbeat` · `vumeter` ·
@@ -139,8 +172,6 @@ la monoplace · `drs` · `pitstop` · `podium` · `tyres` · `sectors` ·
 `plasmacool` · `starfield` · `starwarp` · `rainbow` · `breathe` · `sinewave` ·
 `ripple` · `lavalamp` · `kitt` · `spiral` · `tunnel` · `dna` · `bubbles` ·
 `pulsegrid` · `testbars` · `scanline` · `noisefield`
-
-**Home Assistant (2)** — `message` · `compose`
 
 `node tools/wled-player.js --list` affiche la liste à jour.
 
@@ -155,20 +186,20 @@ eux. Un défilement écrit à la main avec un modulo improvisé donne un texte
 tronqué : c'est arrivé à `rbr`, dont la phase de 4,8 s à 11 px/s ne
 parcourait que 53 des 104 pixels nécessaires — on ne voyait jamais la fin de
 « RED BULL RACING ». Même défaut sur `deadpool`, dont les deux messages
-basculaient au milieu d'un défilement en cours. Les deux sont corrigés, et un
-test automatique vérifie les 15 défilements de la bibliothèque.
+basculaient au milieu d'un défilement en cours. Les deux sont corrigés, et
+tout le lot 4 passe par ces helpers.
 
 ### Place occupée
 
-Les 141 GIF pèsent **3,0 Mo** en 32×8 à 25 fps. Une partition ESP32 en
+Les 241 GIF pèsent **6,3 Mo** en 32×8 à 25 fps. Une partition ESP32 en
 accepte **une quinzaine au mieux**, soit environ 350 Ko. Il faut donc choisir.
 
 - Sélectionne tes préférées et ne téléverse que celles-là. La galerie a un
   bouton de téléchargement par carte, tu n'es pas obligé de passer par les
   fichiers déjà encodés.
 - Encoder plus léger aide un peu : `--fps 20 --colors 64`.
-- Les plus gourmandes sont `aurora` (68 Ko), `plasma` (58), `noisefield` (55),
-  `plasmacool` (51) et `max` (50).
+- Les plus gourmandes sont `grille2026` (100 Ko, 34 s de défilement), `top14`
+  (81), `ferrari` (69), `racingbulls` (69) et `aurora` (68).
 - **Toutes les autres restent utilisables sans limite via le streaming UDP**
   (`wled-player.js` ou le nœud Node-RED) : rien n'est stocké sur le
   contrôleur, donc aucune contrainte de place.
@@ -245,7 +276,7 @@ légèrement différente.
 ### Le raccord de boucle
 
 Un GIF tourne en boucle infinie, donc la dernière image enchaîne sur la
-première. **61 des 141 bouclent parfaitement**, sans aucun fondu : celles
+première. **161 des 241 bouclent parfaitement**, sans aucun fondu : celles
 dont tout dérive de `p = t % C` avec les oscillations calées sur le cycle
 par `osc(t, C, n)`. Les autres combinent des périodes incommensurables — ou
 de l'aléatoire, comme la pluie Matrix et les étincelles de la monoplace —
@@ -391,12 +422,14 @@ Node 14 ou plus récent.
 
 ```js
 options: {
-  max: { num: '33' },   // '33', '1' ou '3'
+  max: { num: '3' },    // '3' en 2026, '33' ou '1'
 }
 ```
 
-Pour mémoire : Verstappen court en **1** quand il est champion du monde et
-en **33** le reste du temps. Le **3** était celui de Ricciardo.
+En 2026, Verstappen court avec le **3**, que Ricciardo a libéré ; le **33**
+et le **1** restent disponibles pour les saisons précédentes. Les autres
+pilotes de la grille 2026 ont chacun leur animation (catégorie « F1 2026 ·
+Pilotes »).
 
 **Le carrousel.** `CONFIG.playlist` est une liste `{ id, seconds }`.
 Les durées par défaut sont des multiples entiers du cycle de chaque

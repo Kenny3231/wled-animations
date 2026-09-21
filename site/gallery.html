@@ -3,223 +3,243 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Animations WLED 8×32 — Aperçus animés</title>
+<title>Animations WLED</title>
+<meta name="description" content="Animations pixel pour dalles WLED 32×8 : aperçus animés en direct, GIF à télécharger et YAML Home Assistant prêt à coller.">
+<meta name="theme-color" content="#07080b">
 <style>
 :root{
-  --bg:#07080b; --surface:#0e1016; --surface2:#141821; --line:#1f232e;
-  --txt:#e7e9f0; --muted:#868da0; --accent:#ff4d2e; --ok:#35d07f;
+  --bg:#07080b; --surface:#0e1016; --surface2:#151923; --line:#1f232e; --line2:#2b3140;
+  --txt:#e7e9f0; --muted:#8a91a4; --accent:#ff4d2e; --accent-ink:#d93a1c; --ok:#35d07f; --info:#9fd6ff;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --radius:12px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{
-  background:radial-gradient(1200px 600px at 50% -10%,#151a26 0%,var(--bg) 60%);
-  color:var(--txt);
+  background:radial-gradient(1200px 500px at 50% -10%,#151a26 0%,var(--bg) 60%) no-repeat,var(--bg);
+  color:var(--txt);min-height:100vh;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
-  padding:32px 20px 140px;-webkit-font-smoothing:antialiased;
+  -webkit-font-smoothing:antialiased;
 }
-.wrap{max-width:1280px;margin:0 auto}
+.wrap{max-width:1600px;margin:0 auto;padding:0 16px}
 
-header{text-align:center;margin-bottom:34px}
-h1{font-size:clamp(26px,4vw,40px);font-weight:700;letter-spacing:-.02em}
+header.top{padding:22px 0 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:clamp(22px,3vw,30px);font-weight:700;letter-spacing:-.02em;line-height:1.1}
 h1 span{color:var(--accent)}
-.sub{color:var(--muted);margin-top:10px;font-size:15px}
-.pill{display:inline-block;margin-top:14px;padding:5px 12px;border:1px solid var(--line);
-  border-radius:999px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.sub{color:var(--muted);font-size:13.5px;margin-top:6px}
+.pill{font-family:var(--mono);font-size:11.5px;color:var(--muted);border:1px solid var(--line);
+  border-radius:999px;padding:4px 10px;white-space:nowrap}
 
-/* ---- barre de contrôle ---- */
-.controls{
-  display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:center;
-  background:var(--surface);border:1px solid var(--line);border-radius:12px;
-  padding:14px 18px;margin-bottom:30px;
-}
-.ctl{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted)}
-.ctl input[type=range]{width:110px;accent-color:var(--accent)}
-button{
-  font:inherit;font-size:13px;font-weight:600;cursor:pointer;
-  background:var(--surface2);color:var(--txt);border:1px solid var(--line);
-  padding:9px 15px;border-radius:8px;transition:.15s;
-}
-button:hover{border-color:#39404f;background:#1a1f2b}
-button.primary{background:#d93a1c;border-color:#d93a1c;color:#fff}
-button.primary:hover{background:#c73418;border-color:#c73418}
-button:active{transform:translateY(1px)}
-button:disabled{opacity:.45;cursor:progress}
-button.gif{padding:6px 12px;font-size:12px;background:#18202c;border-color:#2a3446;color:#9fd6ff}
-button.gif:hover{border-color:#3d7fb5;color:#cfeaff}
-button.gif.done{color:var(--ok);border-color:#2a5f43}
-select{background:var(--surface2);color:var(--txt);border:1px solid var(--line);
-  border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;cursor:pointer}
-
-/* ---- grille ---- */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:22px}
-@media(max-width:520px){.grid{grid-template-columns:1fr}}
-
-.card{
-  background:var(--surface);border:1px solid var(--line);border-radius:14px;
-  padding:16px;transition:border-color .2s,transform .2s;
-}
-.card:hover{border-color:#333c4d}
-.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
-
-.panel-wrap{position:relative;border-radius:9px;overflow:hidden;background:#000;
-  border:1px solid #191c24;line-height:0}
-canvas.panel{width:100%;height:auto;display:block}
-.expand{
-  position:absolute;top:8px;right:8px;opacity:0;transition:.18s;
-  background:rgba(8,9,12,.82);border:1px solid #2b3140;border-radius:6px;
-  padding:5px 9px;font-size:11px;color:#c3c8d6;backdrop-filter:blur(6px);
-}
-.panel-wrap:hover .expand{opacity:1}
-
-.head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:14px 0 6px}
-.name{font-size:16px;font-weight:650;letter-spacing:-.01em}
-.tag{font-family:var(--mono);font-size:10.5px;color:var(--muted);
-  border:1px solid var(--line);border-radius:5px;padding:2px 7px;white-space:nowrap}
-.desc{font-size:13.5px;color:#aab0c0;line-height:1.55}
-
-.spec{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;
-  font-family:var(--mono);font-size:11px;color:var(--muted)}
-.spec b{color:#c9cedb;font-weight:500}
-.sw{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px}
-
-.foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
-label.chk{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;user-select:none}
-label.chk input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer}
-select{background:var(--surface2);color:var(--txt);border:1px solid var(--line);
-  border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;cursor:pointer}
-
-/* ---- barre sélection ---- */
-.dock{
-  position:fixed;left:0;right:0;bottom:0;z-index:50;
-  background:rgba(10,12,17,.93);backdrop-filter:blur(14px);
-  border-top:1px solid var(--line);padding:13px 20px;
-}
-.dock-in{max-width:1280px;margin:0 auto;display:flex;align-items:center;
-  gap:14px;flex-wrap:wrap;justify-content:space-between}
-.count{font-size:13.5px;color:var(--muted)}
-.count b{color:var(--txt)}
-.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:200px}
-.chip{font-size:11.5px;background:var(--surface2);border:1px solid var(--line);
-  border-radius:999px;padding:4px 11px;color:#c3c8d6}
-
-/* ---- modal ---- */
-.modal{position:fixed;inset:0;z-index:100;background:rgba(4,5,8,.88);
-  backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}
-.modal.on{display:flex}
-.modal-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;
-  padding:20px;max-width:1000px;width:100%;max-height:90vh;overflow:auto}
-.modal-box h2{font-size:17px;margin-bottom:14px}
-pre{background:#05060a;border:1px solid var(--line);border-radius:8px;padding:14px;
-  overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.55;color:#b7d9c4;max-height:46vh}
-.note{background:rgba(255,77,46,.07);border:1px solid rgba(255,77,46,.3);
-  border-radius:10px;padding:13px 15px;font-size:13px;color:#d9ccc8;margin-bottom:26px;line-height:1.6}
-.note b{color:var(--accent)}
-
-/* ---- recherche et catégories ---- */
-.filters{display:flex;flex-direction:column;gap:14px;margin-bottom:26px}
-.search{display:block;width:100%;max-width:560px;margin:0 auto;
-  background:var(--surface);color:var(--txt);border:1px solid var(--line);
-  border-radius:10px;padding:11px 15px;font:inherit;font-size:14px}
+/* ---- barre collante : recherche, affichage, lecture, réglages, catégories ---- */
+.bar{position:sticky;top:0;z-index:40;margin:0 -16px;padding:10px 16px;
+  background:rgba(7,8,11,.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line)}
+.bar-in{max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:8px;align-items:center}
+.search{flex:1;min-width:0;background:var(--surface);color:var(--txt);border:1px solid var(--line);
+  border-radius:10px;padding:9px 12px;font:inherit;font-size:14px}
 .search::placeholder{color:var(--muted)}
 .search:focus{outline:none;border-color:var(--accent)}
-.cats{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
-button.cat{padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:550;background:var(--surface)}
+button{font:inherit;font-size:13px;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--txt);
+  border:1px solid var(--line);padding:8px 12px;border-radius:9px;white-space:nowrap;
+  transition:background .15s,border-color .15s,color .15s}
+button:hover{border-color:#39404f;background:#1a1f2b}
+button:focus-visible,select:focus-visible,summary:focus-visible,.card:focus-visible,.search:focus-visible{
+  outline:2px solid var(--info);outline-offset:2px}
+button.primary{background:var(--accent-ink);border-color:var(--accent-ink);color:#fff}
+button.primary:hover{background:#c73418;border-color:#c73418}
+button:disabled{opacity:.45;cursor:progress}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
+.seg button{border:0;border-radius:0;background:var(--surface);color:var(--muted);padding:8px 11px}
+.seg button[aria-pressed="true"]{background:var(--surface2);color:var(--txt)}
+.cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.cats::-webkit-scrollbar{display:none}
+button.cat{flex:none;padding:6px 11px;border-radius:999px;font-size:12.5px;font-weight:550;background:var(--surface)}
 button.cat i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:6px}
 button.cat.on{background:rgba(255,77,46,.16);border-color:var(--accent);color:#fff}
 button.cat.on i{color:#ffb8aa}
+
+details.opts{position:relative;flex:none}
+details.opts summary{list-style:none;cursor:pointer;font-size:13px;font-weight:600;background:var(--surface2);
+  border:1px solid var(--line);border-radius:9px;padding:8px 12px;white-space:nowrap}
+details.opts summary::-webkit-details-marker{display:none}
+.opts-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:45;width:min(340px,calc(100vw - 32px));
+  background:var(--surface);border:1px solid var(--line2);border-radius:var(--radius);padding:14px;
+  display:grid;gap:12px;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+.opts-panel h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.opt{display:grid;grid-template-columns:84px 1fr 44px;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.opt input[type=range]{width:100%;accent-color:var(--accent)}
+.opt output{font-family:var(--mono);font-size:12px;color:var(--txt);text-align:right}
+select{background:var(--surface2);color:var(--txt);border:1px solid var(--line);border-radius:7px;
+  padding:6px 8px;font:inherit;font-size:12.5px;cursor:pointer}
+.opt select{width:100%}
+
+/* ---- grille : compacte par défaut, détaillée sur demande ---- */
+main{padding:16px 0 110px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.grid.detail{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:8px;cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:#333c4d}
+.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 .card.hide{display:none}
-.empty{display:none;text-align:center;color:var(--muted);padding:48px 0;font-size:14px}
+.panel-wrap{position:relative;border-radius:8px;overflow:hidden;background:#000;border:1px solid #191c24;line-height:0}
+canvas.panel{width:100%;height:auto;display:block}
+.meta{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 2px 1px}
+.name{font-size:13.5px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.id{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.pick{position:absolute;top:12px;left:12px;width:24px;height:24px;padding:0;border-radius:7px;
+  border:1px solid rgba(255,255,255,.3);background:rgba(8,9,12,.72);display:grid;place-items:center;
+  opacity:0;transition:opacity .15s,background .15s}
+.pick svg{width:13px;height:13px;stroke:#fff;opacity:0}
+.card:hover .pick,.card.sel .pick,.pick:focus-visible{opacity:1}
+.card.sel .pick{background:var(--accent-ink);border-color:var(--accent-ink)}
+.card.sel .pick svg{opacity:1}
+@media (hover:none){.pick{opacity:1}}
+
+.more{display:none}
+.grid.detail .card{padding:12px;cursor:default}
+.grid.detail .panel-wrap{cursor:zoom-in}
+.grid.detail .more{display:block}
+.grid.detail .name{font-size:15px}
+.tag{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--line);
+  border-radius:5px;padding:2px 7px;white-space:nowrap}
+.desc{font-size:13px;color:#aab0c0;line-height:1.55;margin-top:8px}
+.spec{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:9px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.spec b{color:#c9cedb;font-weight:500}
+.sw{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.acts button{padding:6px 10px;font-size:12px}
+button.gif{background:#18202c;border-color:#2a3446;color:var(--info)}
+button.gif:hover{border-color:#3d7fb5;color:#cfeaff}
+button.done{color:var(--ok)!important;border-color:#2a5f43!important}
+.empty{display:none;text-align:center;color:var(--muted);padding:56px 0;font-size:14px}
 .empty.on{display:block}
 
-.idline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-2px 0 8px;
-  font-family:var(--mono);font-size:11px;color:var(--muted)}
-.idline code{color:#c9cedb;background:var(--surface2);border:1px solid var(--line);
-  border-radius:5px;padding:1px 6px}
-.foot{flex-wrap:wrap}
-.foot-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-button.yaml{padding:6px 12px;font-size:12px}
-button.yaml.done{color:var(--ok);border-color:#2a5f43}
+/* ---- sélection : la barre n'apparaît qu'avec au moins une animation cochée ---- */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px 16px;
+  background:rgba(10,12,17,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);transform:translateY(110%);transition:transform .2s}
+.dock.on{transform:none}
+.dock-in{max-width:1600px;margin:0 auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.count{font-size:13px;color:var(--muted);margin-right:auto}
+.count b{color:var(--txt)}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:120;max-width:calc(100vw - 32px);
+  background:var(--surface2);border:1px solid var(--line2);border-radius:999px;padding:8px 14px;
+  font-family:var(--mono);font-size:12px;color:var(--txt);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.toast:empty{display:none}
+.dock.on ~ .toast{bottom:74px}
 
-footer.site{margin-top:48px;padding-top:22px;border-top:1px solid var(--line);
-  text-align:center;font-size:12.5px;color:var(--muted);line-height:1.8}
-footer.site a{color:#9fd6ff;text-decoration:none}
+/* ---- fiche d'une animation ---- */
+.modal{position:fixed;inset:0;z-index:100;background:rgba(4,5,8,.86);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;padding:16px}
+.modal.on{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:16px;
+  max-width:880px;width:100%;max-height:calc(100vh - 32px);overflow:auto}
+.m-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.m-head h2{font-size:18px;letter-spacing:-.01em}
+.m-sub{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:5px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.m-sub code{color:#c9cedb;background:var(--surface2);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.close{padding:6px 10px;flex:none}
+details.code{margin-top:12px}
+details.code summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
+pre{margin-top:8px;background:#05060a;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;
+  font-family:var(--mono);font-size:11.5px;line-height:1.55;color:#b7d9c4;max-height:40vh}
+
+footer.site{padding:24px 0 12px;border-top:1px solid var(--line);text-align:center;font-size:12.5px;color:var(--muted);line-height:1.8}
+footer.site a{color:var(--info);text-decoration:none}
 footer.site a:hover{text-decoration:underline}
 footer.site code{font-family:var(--mono);font-size:11.5px}
+
+@media (max-width:560px){
+  header.top{padding-top:16px}
+  .row.tools{flex-wrap:wrap}
+  .row.tools .search{flex-basis:100%}
+  details.opts{margin-left:auto}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .grid.detail{grid-template-columns:1fr}
+  .card{padding:6px}
+  .pick{top:10px;left:10px}
+  .meta{flex-direction:column;align-items:flex-start;gap:1px;padding:6px 2px 0}
+  .name{font-size:12.5px;max-width:100%}
+  .seg button{padding:8px 9px}
+  details.opts summary{padding:8px 10px}
+  .modal{padding:8px}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.dock{transition:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<header>
-  <h1>Animations <span>WLED</span> — matrice 8 × 32</h1>
-  <p class="sub"><b id="total">0</b> animations rendues pixel par pixel, à la vraie résolution. Ce que tu vois est ce que la dalle affichera.</p>
-  <div class="pill">Pack 32 × 8 · 256 LEDs · rendu temps réel</div>
+<header class="top">
+  <div>
+    <h1>Animations <span>WLED</span></h1>
+    <p class="sub"><b id="total">0</b> animations pour dalle 32 × 8, rendues en direct : ce que tu vois est ce que la dalle affichera.</p>
+  </div>
+  <span class="pill">Pack 32 × 8 · 256 LEDs</span>
 </header>
 
-<div class="note">
-  <b>Note F1 :</b> Max Verstappen court en <b>#1</b> quand il est champion du monde, et en <b>#33</b> le reste du temps — le <b>#3</b> était le numéro de Daniel Ricciardo. Le sélecteur sur la carte te laisse choisir : 33, 1 ou 3.
+<div class="bar">
+  <div class="bar-in">
+    <div class="row tools">
+      <input class="search" id="q" type="search" placeholder="Rechercher : norris, toulon, iron…" autocomplete="off" aria-label="Rechercher une animation">
+      <div class="seg" role="group" aria-label="Affichage">
+        <button id="denseBtn" aria-pressed="true" title="Vignettes compactes">Compact</button>
+        <button id="detailBtn" aria-pressed="false" title="Cartes détaillées">Détails</button>
+      </div>
+      <button id="playBtn" aria-label="Mettre en pause" title="Pause / lecture">⏸</button>
+      <details class="opts" id="opts">
+        <summary>Réglages</summary>
+        <div class="opts-panel">
+          <h3>Aperçu</h3>
+          <label class="opt">Vitesse<input type="range" id="speed" min="20" max="200" value="100"><output id="speedV">1.0×</output></label>
+          <label class="opt">Luminosité<input type="range" id="bright" min="20" max="160" value="100"><output id="brightV">100%</output></label>
+          <h3>Export GIF</h3>
+          <label class="opt">Taille<select id="exScale"><option value="1">32 × 8 — natif</option><option value="2">64 × 16 — dalle 16×64</option><option value="3">96 × 24</option></select><span></span></label>
+          <label class="opt">Cadence<select id="exFps"><option value="20">20 fps</option><option value="25" selected>25 fps</option><option value="50">50 fps</option></select><span></span></label>
+          <label class="opt">Palette<select id="exColors"><option value="64">64 couleurs</option><option value="128" selected>128 couleurs</option><option value="256">256 couleurs</option></select><span></span></label>
+          <h3>Sélection</h3>
+          <div class="row"><button id="allBtn">Tout ce qui est affiché</button><button id="noneBtn">Tout effacer</button></div>
+        </div>
+      </details>
+    </div>
+    <div class="cats" id="cats" role="group" aria-label="Catégories"></div>
+  </div>
 </div>
 
-<div class="controls">
-  <button id="playBtn" class="primary">⏸ Pause</button>
-  <div class="ctl"><span>Vitesse</span><input type="range" id="speed" min="20" max="200" value="100"><span id="speedV" style="font-family:var(--mono);width:34px">1.0×</span></div>
-  <div class="ctl"><span>Luminosité</span><input type="range" id="bright" min="20" max="160" value="100"><span id="brightV" style="font-family:var(--mono);width:34px">100%</span></div>
-  <button id="allBtn">Tout sélectionner</button>
-  <button id="noneBtn">Tout effacer</button>
-</div>
-
-<div class="controls" style="border-color:#2a3446">
-  <strong style="font-size:13px;color:#9fd6ff">Export GIF</strong>
-  <div class="ctl"><span>Taille</span><select id="exScale">
-    <option value="1">32 × 8 — natif</option>
-    <option value="2">64 × 16 — dalle 16×64</option>
-    <option value="3">96 × 24</option>
-  </select></div>
-  <div class="ctl"><span>Cadence</span><select id="exFps">
-    <option value="20">20 fps</option>
-    <option value="25" selected>25 fps</option>
-    <option value="50">50 fps</option>
-  </select></div>
-  <div class="ctl"><span>Palette</span><select id="exColors">
-    <option value="64">64 couleurs</option>
-    <option value="128" selected>128 couleurs</option>
-    <option value="256">256 couleurs</option>
-  </select></div>
-  <span id="exInfo" style="font-size:12px;color:var(--muted);font-family:var(--mono)"></span>
-</div>
-
-<div class="filters">
-  <input class="search" id="q" type="search" placeholder="Rechercher : batsignal, matrix, drapeau…" autocomplete="off" aria-label="Rechercher une animation">
-  <div class="cats" id="cats" role="group" aria-label="Catégories"></div>
-</div>
-
-<div class="grid" id="grid"></div>
-<p class="empty" id="empty">Aucune animation ne correspond à ta recherche.</p>
+<main>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty">Aucune animation ne correspond à ta recherche.</p>
+</main>
 
 <footer class="site">
   <p>Réalisé par domo-lab31 - Kenny3231 · généré le @@DATE@@</p>
   <p>Catalogue lu par le hub : <a href="index.json"><code>index.json</code></a> · pack 32 × 8 : <a href="packs/32x8/index.json"><code>packs/32x8/index.json</code></a></p>
-  <p>Fan-art non officiel. Les noms et univers évoqués (F1, Red Bull Racing, Marvel, Overwatch, Stade Toulousain…) appartiennent à leurs détenteurs.</p>
+  <p>Fan-art non officiel. Les noms et univers évoqués (F1, écuries et pilotes, clubs du Top 14, Marvel, jeux vidéo…) appartiennent à leurs détenteurs.</p>
 </footer>
 
 </div>
 
-<div class="dock">
+<div class="dock" id="dock">
   <div class="dock-in">
-    <div class="count"><b id="cnt">0</b> animation(s) sélectionnée(s)</div>
-    <div class="chips" id="chips"></div>
-    <button id="gifAllBtn">Télécharger les GIF sélectionnés</button>
+    <div class="count"><b id="cnt">0</b> sélectionnée(s)</div>
+    <button id="gifAllBtn">Télécharger les GIF</button>
     <button class="primary" id="copyBtn">Copier les identifiants</button>
   </div>
 </div>
+<div class="toast" id="exInfo" role="status" aria-live="polite"></div>
 
-<div class="modal" id="modal"><div class="modal-box">
-  <h2 id="mTitle"></h2>
-  <div class="panel-wrap" style="margin-bottom:16px"><canvas class="panel" id="mCanvas"></canvas></div>
-  <pre id="mCode"></pre>
-  <div style="margin-top:14px;text-align:right"><button id="mClose">Fermer</button></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="modal-box">
+  <div class="m-head">
+    <div><h2 id="mTitle"></h2><div class="m-sub" id="mSub"></div></div>
+    <button class="close" id="mClose" aria-label="Fermer">✕</button>
+  </div>
+  <div class="panel-wrap"><canvas class="panel" id="mCanvas"></canvas></div>
+  <p class="desc" id="mDesc"></p>
+  <div class="spec" id="mSpec"></div>
+  <div class="acts" id="mActs"></div>
+  <details class="code"><summary>Voir la fonction de rendu</summary><pre id="mCode"></pre></details>
 </div></div>
 
 <script>
@@ -273,7 +293,7 @@ function buildPalette(frames,colors){
 }
 
 async function encodeAnimGif(a,opts,cfg){
-  const clip=CLIPS[a.id]||{seconds:8,exact:false};
+  const clip=CLIPS[a.id]||a.clip||{seconds:8,exact:false};
   const n=Math.round(clip.seconds*cfg.fps), dt=1/cfg.fps;
   const st=a.init?a.init():{}, buf=newBuf();
   const ow=W*cfg.scale, oh=H*cfg.scale;
@@ -413,12 +433,17 @@ function blit(p, b, bright){
 }
 
 /* ═══════════════════════════════════════════════════════════
-   UI
+   UI — vignettes compactes par défaut, fiche complète au clic
    ═══════════════════════════════════════════════════════════ */
-const grid=document.getElementById('grid');
-const DPR=Math.min(1.25, window.devicePixelRatio||1);
-const insts=[];
+const $=id=>document.getElementById(id);
+const grid=$('grid');
+const DPR=Math.min(1.5, window.devicePixelRatio||1);
+const insts=[], parCarte=new WeakMap();
 const selected=new Set();
+const lire=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const ecrire=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+let dense=lire('wled-affichage')!=='detail';
+const cellule=()=>dense?7:14;
 
 /* Catégories injectées au build depuis packs/32x8/categories.json.
    L'affichage suit leur ordre ; une animation non classée finit en fin de
@@ -429,6 +454,7 @@ CATEGORIES.forEach(c=>c.animations.forEach(id=>{ CAT_OF[id]=c; }));
 const ORDERED=[...CATEGORIES.flatMap(c=>c.animations).map(getAnim).filter(Boolean),
                ...ANIMS.filter(a=>!CAT_OF[a.id])];
 const norm=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* L'appel de service tel qu'on le colle dans une automatisation. Le nom du
    panneau est celui choisi dans l'intégration, d'où l'exemple à remplacer. */
@@ -446,128 +472,159 @@ function copyText(txt, btn, label){
     navigator.clipboard.writeText(txt).then(ok, ()=>prompt('Copie ce texte :', txt));
   else prompt('Copie ce texte :', txt);
 }
+const swatches=a=>a.cols.map(c=>`<span><i class="sw" style="background:${c[0]}"></i>${esc(c[1])}</span>`).join('');
+function optSelect(a,inst){
+  if(!a.opt) return '';
+  return `<select data-opt aria-label="${esc(a.opt.label)}">${a.opt.values.map(v=>
+    `<option value="${esc(v)}"${v===inst.opt[a.opt.key]?' selected':''}>${esc(a.opt.label)} ${esc(v)}</option>`).join('')}</select>`;
+}
 
+/* ── cartes ── */
 ORDERED.forEach(a=>{
   const cat=CAT_OF[a.id];
-  const card=document.createElement('div'); card.className='card'; card.dataset.id=a.id;
+  const card=document.createElement('div');
+  card.className='card'; card.tabIndex=0; card.dataset.id=a.id;
   card.dataset.cat=cat?cat.id:'autres';
   card.dataset.q=norm([a.id,a.name,a.tag,a.desc,cat?cat.name:''].join(' '));
-  const swatches=a.cols.map(c=>`<span><i class="sw" style="background:${c[0]}"></i>${c[1]}</span>`).join('');
-  const optHtml = a.opt
-    ? `<select data-opt="${a.opt.key}">${a.opt.values.map(v=>`<option${v===a.opt.def?' selected':''}>${a.opt.label} ${v}</option>`).join('')}</select>`
-    : '';
+  card.setAttribute('aria-label',a.name+' — ouvrir la fiche');
+  const inst={a,card,buf:newBuf(),st:a.init?a.init():{},opt:a.opt?{[a.opt.key]:a.opt.def}:{},vis:false,lastT:0};
   card.innerHTML=`
-    <div class="panel-wrap"><canvas class="panel"></canvas>
-      <button class="expand">Agrandir</button></div>
-    <div class="head"><div class="name">${a.name}</div><div class="tag">${a.tag}</div></div>
-    <div class="idline"><code>${a.id}</code><span>${cat?cat.name:'Autres'}</span></div>
-    <div class="desc">${a.desc}</div>
-    <div class="spec"><span><b>Effet</b> ${a.fx}</span><span><b>Durée</b> ${a.speed}</span></div>
-    <div class="spec">${swatches}</div>
-    <div class="foot">
-      <label class="chk"><input type="checkbox"><span>Je veux celle-ci</span></label>
-      <span class="foot-actions">${optHtml}
-        <button class="yaml" title="Copie un appel wled_anim.flash prêt à coller dans une automatisation">YAML HA</button>
-        <button class="gif">Télécharger le GIF</button></span>
+    <div class="panel-wrap"><canvas class="panel"></canvas></div>
+    <button class="pick" aria-pressed="false" aria-label="Sélectionner ${esc(a.name)}"><svg viewBox="0 0 16 16" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></button>
+    <div class="meta"><span class="name">${esc(a.name)}</span><span class="id">${a.id}</span></div>
+    <div class="more">
+      <div class="spec"><span class="tag">${esc(a.tag)}</span><span>${esc(cat?cat.name:'Autres')}</span></div>
+      <p class="desc">${esc(a.desc)}</p>
+      <div class="spec"><span><b>Effet</b> ${esc(a.fx)}</span><span><b>Durée</b> ${esc(a.speed)}</span></div>
+      <div class="spec">${swatches(a)}</div>
+      <div class="acts">${optSelect(a,inst)}<button class="yaml">YAML HA</button><button class="gif">Télécharger le GIF</button></div>
     </div>`;
   grid.appendChild(card);
-  const ybtn=card.querySelector('button.yaml');
-  ybtn.addEventListener('click',()=>copyText(yamlFor(a), ybtn, 'YAML HA'));
+  inst.canvas=card.querySelector('canvas');
+  inst.p=makePanel(inst.canvas,cellule(),DPR);
+  insts.push(inst); parCarte.set(card,inst);
 
-  const canvas=card.querySelector('canvas');
-  const p=makePanel(canvas, 18, DPR);
-  const inst={a, p, buf:newBuf(), st:a.init?a.init():{}, opt:a.opt?{[a.opt.key]:a.opt.def}:{}, vis:true, card};
-  insts.push(inst);
-
-  card.querySelector('input').addEventListener('change',e=>{
-    e.target.checked ? selected.add(a.id) : selected.delete(a.id);
-    card.classList.toggle('sel', e.target.checked);
-    refreshDock();
+  card.addEventListener('click',e=>{
+    if(e.target.closest('.pick')){ basculer(inst); return; }
+    if(e.target.closest('button,select')) return;
+    if(!dense&&!e.target.closest('.panel-wrap')) return;
+    ouvrir(inst);
   });
-  const sel=card.querySelector('select');
-  if(sel) sel.addEventListener('change',e=>{
-    inst.opt[a.opt.key]=e.target.value.split(' ').pop();
+  card.addEventListener('keydown',e=>{
+    if(e.target===card&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); ouvrir(inst); }
   });
-  card.querySelector('.expand').addEventListener('click',()=>openModal(inst));
-  const gbtn=card.querySelector('button.gif');
-  gbtn.addEventListener('click',()=>exportOne(inst,gbtn).catch(()=>{}));
+  const y=card.querySelector('button.yaml');
+  y.addEventListener('click',()=>copyText(yamlFor(a),y,'YAML HA'));
+  const g=card.querySelector('button.gif');
+  g.addEventListener('click',()=>exportOne(inst,g).catch(()=>{}));
+  const s=card.querySelector('select[data-opt]');
+  if(s) s.addEventListener('change',()=>{ inst.opt[a.opt.key]=s.value; });
 });
 
-/* visibilité */
-const io=new IntersectionObserver(es=>{
-  es.forEach(e=>{ const i=insts.find(x=>x.card===e.target); if(i) i.vis=e.isIntersecting; });
-},{rootMargin:'120px'});
+/* On ne dessine que ce qui est à l'écran : 241 canvas animés en même temps
+   mettraient n'importe quel téléphone à genoux. */
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  const i=parCarte.get(e.target); if(i) i.vis=e.isIntersecting;
+}),{rootMargin:'200px'});
 insts.forEach(i=>io.observe(i.card));
 
-/* boucle */
+/* ── sélection ── */
+function basculer(inst,force){
+  const on=force==null?!selected.has(inst.a.id):force;
+  on?selected.add(inst.a.id):selected.delete(inst.a.id);
+  inst.card.classList.toggle('sel',on);
+  inst.card.querySelector('.pick').setAttribute('aria-pressed',on);
+  refreshDock();
+  if(modalInst===inst) majBoutonSel();
+}
+function refreshDock(){
+  $('cnt').textContent=selected.size;
+  $('dock').classList.toggle('on',selected.size>0);
+}
+
+/* ── boucle d'animation ──
+   Les vignettes tournent à 30 images/s, la fiche ouverte à pleine cadence :
+   à cette taille l'œil ne voit pas la différence, le processeur si. */
 let playing=true, speed=1, bright=1, last=performance.now(), clock=0;
 function loop(now){
-  const raw=clamp((now-last)/1000, 0, 0.05); last=now;
+  const raw=clamp((now-last)/1000,0,.05); last=now;
   if(playing){
-    const dt=raw*speed; clock+=dt;
+    clock+=raw*speed;
+    const pas=dense?1/30:1/45;
     for(const i of insts){
       if(!i.vis) continue;
-      try{
-        i.a.render(i.buf, clock, dt, i.st, i.opt);
-        blit(i.p, i.buf, bright);
-      }catch(err){
-        if(!i.warned){ console.error('['+i.a.id+']', err); i.warned=true; }
-      }
+      const dt=clock-i.lastT;
+      if(dt<pas) continue;
+      i.lastT=clock;
+      try{ i.a.render(i.buf,clock,Math.min(dt,.1),i.st,i.opt); blit(i.p,i.buf,bright); }
+      catch(err){ if(!i.warned){ console.error('['+i.a.id+']',err); i.warned=true; } }
     }
     if(modalInst){
-      try{
-        modalInst.a.render(modalBuf, clock, dt, modalSt, modalInst.opt);
-        blit(modalPanel, modalBuf, bright);
-      }catch(err){ console.error('[modal]', err); }
+      const dt=Math.min(clock-modalT,.1); modalT=clock;
+      try{ modalInst.a.render(modalBuf,clock,dt,modalSt,modalInst.opt); blit(modalPanel,modalBuf,bright); }
+      catch(err){ console.error('[fiche]',err); }
     }
   }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
-/* contrôles */
-const $=id=>document.getElementById(id);
-$('playBtn').onclick=e=>{ playing=!playing; e.target.textContent=playing?'⏸ Pause':'▶ Lecture'; };
+/* ── affichage compact / détaillé ── */
+function appliquerAffichage(){
+  grid.classList.toggle('detail',!dense);
+  $('denseBtn').setAttribute('aria-pressed',dense);
+  $('detailBtn').setAttribute('aria-pressed',!dense);
+  for(const i of insts){ i.p=makePanel(i.canvas,cellule(),DPR); blit(i.p,i.buf,bright); }
+  ecrire('wled-affichage',dense?'compact':'detail');
+}
+$('denseBtn').onclick=()=>{ if(!dense){ dense=true; appliquerAffichage(); } };
+$('detailBtn').onclick=()=>{ if(dense){ dense=false; appliquerAffichage(); } };
+
+/* ── contrôles ── */
+$('playBtn').onclick=e=>{
+  playing=!playing;
+  const b=e.currentTarget;
+  b.textContent=playing?'⏸':'▶';
+  b.setAttribute('aria-label',playing?'Mettre en pause':'Reprendre la lecture');
+};
 $('speed').oninput=e=>{ speed=e.target.value/100; $('speedV').textContent=speed.toFixed(1)+'×'; };
 $('bright').oninput=e=>{ bright=e.target.value/100; $('brightV').textContent=e.target.value+'%'; };
 // « Tout » veut dire tout ce qui est affiché : on respecte le filtre en cours.
-$('allBtn').onclick=()=>{ document.querySelectorAll('.card:not(.hide) input').forEach(c=>{ c.checked=true; c.dispatchEvent(new Event('change')); }); };
-$('noneBtn').onclick=()=>{ document.querySelectorAll('.card input').forEach(c=>{ c.checked=false; c.dispatchEvent(new Event('change')); }); };
+$('allBtn').onclick=()=>insts.forEach(i=>{ if(!i.card.classList.contains('hide')) basculer(i,true); });
+$('noneBtn').onclick=()=>insts.forEach(i=>basculer(i,false));
+document.addEventListener('click',e=>{ const d=$('opts'); if(d.open&&!d.contains(e.target)) d.open=false; });
 
-function refreshDock(){
-  $('cnt').textContent=selected.size;
-  $('chips').innerHTML=[...selected].map(id=>{
-    const a=ANIMS.find(x=>x.id===id); return `<span class="chip">${a.name}</span>`;
-  }).join('');
-}
 $('gifAllBtn').onclick=async e=>{
-  if(!selected.size){ alert('Coche au moins une animation.'); return; }
-  const btn=e.target, label=btn.textContent;
+  if(!selected.size) return;
+  const btn=e.currentTarget, label=btn.textContent;
   btn.disabled=true;
   const ids=[...selected];
   for(let i=0;i<ids.length;i++){
     btn.textContent=`GIF ${i+1}/${ids.length}…`;
     const inst=insts.find(x=>x.a.id===ids[i]);
-    try{ await exportOne(inst,null); }catch(err){ /* signalé dans exInfo */ }
+    try{ await exportOne(inst,null); }catch(err){ /* signalé dans le bandeau */ }
     // le navigateur demande une autorisation pour les téléchargements
     // multiples : on espace les appels pour qu'il les enchaîne sans en perdre
     await new Promise(r=>setTimeout(r,500));
   }
   btn.textContent=label; btn.disabled=false;
 };
-
 // Un identifiant par ligne : c'est ce qu'attendent le hub, le lecteur UDP
 // (--anim) et le service wled_anim.flash.
-$('copyBtn').onclick=()=>{
-  if(!selected.size){ alert('Coche au moins une animation.'); return; }
-  copyText([...selected].join('\n'), $('copyBtn'), 'Copier les identifiants');
-};
+$('copyBtn').onclick=e=>{ if(selected.size) copyText([...selected].join('\n'),e.currentTarget,'Copier les identifiants'); };
 
-/* recherche + catégories */
+/* Le bandeau d'export s'efface tout seul une fois le fichier parti. */
+const toast=$('exInfo'); let toastT=0;
+new MutationObserver(()=>{
+  clearTimeout(toastT);
+  if(toast.textContent&&!/^encodage/.test(toast.textContent)) toastT=setTimeout(()=>{ toast.textContent=''; },5000);
+}).observe(toast,{childList:true,characterData:true,subtree:true});
+
+/* ── recherche + catégories ── */
 let curCat='all';
 $('cats').innerHTML=[{id:'all',name:'Toutes',n:ORDERED.length},
     ...CATEGORIES.map(c=>({id:c.id,name:c.name,n:c.animations.length}))]
-  .map(c=>`<button class="cat${c.id==='all'?' on':''}" data-cat="${c.id}" aria-pressed="${c.id==='all'}">${c.name}<i>${c.n}</i></button>`)
+  .map(c=>`<button class="cat${c.id==='all'?' on':''}" data-cat="${c.id}" aria-pressed="${c.id==='all'}">${esc(c.name)}<i>${c.n}</i></button>`)
   .join('');
 $('cats').addEventListener('click',e=>{
   const b=e.target.closest('button.cat'); if(!b) return;
@@ -575,6 +632,7 @@ $('cats').addEventListener('click',e=>{
   $('cats').querySelectorAll('button.cat').forEach(x=>{
     x.classList.toggle('on',x===b); x.setAttribute('aria-pressed',x===b);
   });
+  b.scrollIntoView({block:'nearest',inline:'nearest'});
   applyFilter();
 });
 $('q').addEventListener('input',applyFilter);
@@ -591,20 +649,47 @@ function applyFilter(){
 }
 $('total').textContent=ANIMS.length;
 
-/* modal */
-let modalInst=null, modalBuf=newBuf(), modalSt={}, modalPanel=null;
-function openModal(inst){
-  modalInst=inst; modalSt=inst.a.init?inst.a.init():{};
-  $('mTitle').textContent=inst.a.name+' — '+inst.a.tag;
-  modalPanel=makePanel($('mCanvas'), 30, DPR);
-  $('mCode').textContent='// fonction de rendu — portable vers WLED (UDP DNRGB / usermod)\n'
-    + 'render'+inst.a.render.toString().replace(/^render/,'');
+/* ── fiche ── */
+let modalInst=null, modalBuf=newBuf(), modalSt={}, modalPanel=null, modalT=0, retourFocus=null;
+function ouvrir(inst){
+  const a=inst.a, cat=CAT_OF[a.id];
+  modalInst=inst; modalSt=a.init?a.init():{}; modalT=clock; retourFocus=document.activeElement;
+  $('mTitle').textContent=a.name;
+  $('mSub').innerHTML=`<code>${a.id}</code><span class="tag">${esc(a.tag)}</span><span>${esc(cat?cat.name:'Autres')}</span>`;
+  $('mDesc').textContent=a.desc;
+  $('mSpec').innerHTML=`<span><b>Effet</b> ${esc(a.fx)}</span><span><b>Durée</b> ${esc(a.speed)}</span>${swatches(a)}`;
+  const acts=$('mActs');
+  acts.innerHTML=`${optSelect(a,inst)}<button class="yaml">YAML HA</button><button class="gif">Télécharger le GIF</button><button class="selb"></button>`;
+  const y=acts.querySelector('.yaml'); y.onclick=()=>copyText(yamlFor(a),y,'YAML HA');
+  const g=acts.querySelector('.gif'); g.onclick=()=>exportOne(inst,g).catch(()=>{});
+  acts.querySelector('.selb').onclick=()=>basculer(inst);
+  const s=acts.querySelector('select[data-opt]');
+  if(s) s.onchange=()=>{
+    inst.opt[a.opt.key]=s.value;
+    const cs=inst.card.querySelector('select[data-opt]'); if(cs) cs.value=s.value;
+  };
+  majBoutonSel();
+  $('mCode').textContent=a.render.toString();
+  modalPanel=makePanel($('mCanvas'),26,DPR);
   $('modal').classList.add('on');
+  $('mClose').focus();
 }
-$('mClose').onclick=()=>{ $('modal').classList.remove('on'); modalInst=null; };
-$('modal').onclick=e=>{ if(e.target.id==='modal'){ $('modal').classList.remove('on'); modalInst=null; } };
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('modal').classList.remove('on'); modalInst=null; } });
+function majBoutonSel(){
+  const b=$('mActs').querySelector('.selb'); if(!b||!modalInst) return;
+  const on=selected.has(modalInst.a.id);
+  b.textContent=on?'Retirer de la sélection':'Ajouter à la sélection';
+  b.classList.toggle('primary',!on);
+}
+function fermer(){
+  if(!modalInst) return;
+  $('modal').classList.remove('on'); modalInst=null;
+  if(retourFocus&&retourFocus.focus) retourFocus.focus();
+}
+$('mClose').onclick=fermer;
+$('modal').addEventListener('click',e=>{ if(e.target.id==='modal') fermer(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') fermer(); });
 
+appliquerAffichage();
 refreshDock();
 </script>
 </body>

@@ -188,6 +188,16 @@ const CLIPS = {
 
 const FADE = 0.35;   // secondes de fondu de chaque cote quand exact = false
 
+/**
+ * Duree d'export d'une animation : la table ci-dessus d'abord, sinon ce que
+ * l'animation declare elle-meme (`clip`, pour les lots recents), sinon 8 s
+ * avec fondu.
+ */
+function clipFor(id){
+  const a = L.getAnim(id);
+  return CLIPS[id] || (a && a.clip) || { seconds: 8, exact: false };
+}
+
 /* ═══ RENDU ═══════════════════════════════════════════════════════════ */
 
 /**
@@ -220,7 +230,7 @@ function toRGBA(buf, k, scale, out){
 
 /** Rend toutes les images d'une animation, fondu compris. */
 function renderFrames(id, opts, fps, scale){
-  const clip = CLIPS[id] || { seconds: 8, exact: false };
+  const clip = clipFor(id);
   const n = Math.round(clip.seconds * fps);
   const dt = 1 / fps;
   const inst = L.createInstance(id, opts);
@@ -314,7 +324,7 @@ function main(){
                     2 -> 64x16, pour une dalle 16x64
     --colors <n>    taille de la palette, defaut 128 (max 256)
     --out <dir>     dossier de sortie, defaut ./gif
-    --num <n>       numero de Verstappen : 33, 1 ou 3
+    --num <n>       numero de Verstappen : 3 (2026), 33 ou 1
 
   Exemples
     node export-gif.js
@@ -338,7 +348,7 @@ function main(){
     console.warn(`  Le GIF sera joue a ~${(100 / cs).toFixed(1)} fps. Prefere 20, 25 ou 50.`);
   }
 
-  const opts = { max: { num: args.num ? String(args.num) : '33' } };
+  const opts = { max: { num: args.num ? String(args.num) : '3' } };
   const ids  = args.anim ? [args.anim] : L.listIds();
 
   for(const id of ids){
@@ -379,4 +389,4 @@ function main(){
 
 if(require.main === module) main();
 
-module.exports = { CLIPS, renderFrames, encodeGif };
+module.exports = { CLIPS, clipFor, renderFrames, encodeGif };

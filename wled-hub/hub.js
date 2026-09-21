@@ -8,7 +8,7 @@
 
    Entites creees par panneau :
      switch.<panneau>            marche / arret du flux
-     select.<panneau>_animation  les 140 animations
+     select.<panneau>_animation  toutes les animations
      number.<panneau>_luminosite 0 a 100 %
      text.<panneau>_message      texte de l'animation « message »
 
@@ -309,7 +309,7 @@ function catalogFor(w,h){
   // Pas encore de pack pour cette geometrie : on renvoie le pack 32x8
   // marque `upscale` plutot qu'une liste vide. Sans ce repli la carte
   // Lovelace n'afficherait aucune vignette sur une 16x16 alors que la
-  // decouverte MQTT propose quand meme les 140 animations : deux
+  // decouverte MQTT propose quand meme toutes les animations : deux
   // comportements contradictoires pour le meme panneau.
   return catalog[GEOMETRY].map(a => Object.assign({}, a, { source:'upscale' }));
 }

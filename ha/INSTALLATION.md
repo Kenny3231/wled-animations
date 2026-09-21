@@ -6,12 +6,12 @@ Trois morceaux, à poser dans trois dossiers différents de ton Home Assistant.
 Ils ne font pas le même métier, et c'est volontaire.
 
 L'**add-on** `wled_hub` est le seul qui sait dessiner : il fait tourner le
-moteur JavaScript des 140 animations et pousse les pixels en UDP vers tes
+moteur JavaScript des 241 animations et pousse les pixels en UDP vers tes
 dalles. L'**intégration** `wled_anim` est le plugin que tu voulais : elle lit
 le nom et l'IP dans l'intégration WLED officielle, te demande la géométrie de
 la dalle et le nom de l'entité, puis déclare le panneau auprès du hub et crée
 les entités Home Assistant. La **carte** `wled-anim-card` est le widget : la
-liste de tes panneaux et les 140 vignettes, chacune animée en direct, à
+liste de tes panneaux et toutes les vignettes, chacune animée en direct, à
 cliquer pour lancer.
 
 Ce découpage n'est pas un choix esthétique. Une intégration Home Assistant est
@@ -145,7 +145,7 @@ Pour un message personnalisé, écris d'abord le texte puis flashe l'animation
 
 ## Ce qui marche aujourd'hui, ce qui reste à faire
 
-Les 140 animations sont dessinées en 32 × 8, le format de ta dalle actuelle :
+Les animations sont dessinées en 32 × 8, le format de ta dalle actuelle :
 là, le rendu est natif, pixel pour pixel. Sur une autre géométrie le hub
 agrandit au plus proche voisin par un facteur entier, et la carte marque ces
 animations `upscale`. C'est net sur une 16 × 64 (facteur 2), étiré sur une
@@ -161,7 +161,7 @@ n'existe pas, le repli sur le 32 × 8 agrandi évite une carte vide.
 ## Ce que j'ai vérifié d'ici, et ce que je n'ai pas pu
 
 Vérifié en réel : la carte charge le moteur depuis le hub, affiche les
-panneaux enregistrés, dessine les 140 vignettes animées, marque l'animation
+panneaux enregistrés, dessine toutes les vignettes animées, marque l'animation
 active, et un clic sur une vignette change bien l'animation du panneau côté
 hub — 123 trames UDP reçues pendant le test, aucune erreur de page. Le
 découpage DNRGB à 480 LEDs par trame est conforme sur une 64 × 16. Le flash
