@@ -1,0 +1,31 @@
+# Verifie et construit le site a chaque push et chaque pull request.
+#
+# La publication est faite par Cloudflare Pages, branche sur le depot : sa
+# commande de build est `npm test && npm run build`, donc une animation
+# cassee n'est jamais publiee. Ce workflow donne le meme verdict cote
+# GitHub, sur les pull requests comme sur main, et garde le site construit
+# en artefact 14 jours.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+          retention-days: 14
