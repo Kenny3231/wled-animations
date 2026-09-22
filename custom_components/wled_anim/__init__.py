@@ -24,6 +24,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
@@ -78,6 +80,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hub = WledAnimHub(async_get_clientsession(hass), data[CONF_HUB_URL])
     panel_id = data[CONF_PANEL_ID]
 
+    _retirer_anciennes_entites(hass, entry)
+
     # Le hub peut avoir redemarre sans son fichier d'etat : on reenregistre.
     # Il reprend de lui-meme l'animation, la composition et la luminosite
     # s'il connaissait deja le panneau.
@@ -123,6 +127,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_FLASH, _flash, schema=FLASH_SCHEMA)
 
     return True
+
+
+def _retirer_anciennes_entites(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Jusqu'a la 1.1, l'integration creait ses propres entites, en double
+    de celles que l'add-on publie par MQTT. On les retire, avec l'appareil
+    qu'elles laissent vide : il ne reste qu'un jeu d'entites par dalle."""
+    ereg = er.async_get(hass)
+    for ent in er.async_entries_for_config_entry(ereg, entry.entry_id):
+        _LOGGER.info("Retrait de l'ancienne entite %s (desormais fournie par MQTT)", ent.entity_id)
+        ereg.async_remove(ent.entity_id)
+    dreg = dr.async_get(hass)
+    for dev in dr.async_entries_for_config_entry(dreg, entry.entry_id):
+        dreg.async_update_device(dev.id, remove_config_entry_id=entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
