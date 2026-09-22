@@ -5,6 +5,7 @@
 
    Ce qui est verifie, pack par pack :
      - identifiants uniques et utilisables dans un topic MQTT
+     - noms uniques : Home Assistant range les animations par nom
      - metadonnees completes (la galerie et le hub les affichent)
      - chaque animation rangee dans une et une seule categorie
      - table des durees GIF coherente avec les animations existantes
@@ -45,6 +46,16 @@ function testerPack(geo){
     vus.add(id);
   }
   ok(`${ids.length} animations, identifiants uniques`);
+
+  /* noms : Home Assistant range les animations par nom (select MQTT et
+     select de l'integration). Deux noms identiques rendent l'une des deux
+     inaccessible, et MQTT rejette carrement une liste avec doublons. */
+  const noms = new Map();
+  for(const a of L.ANIMS){
+    if(noms.has(a.name)) ko(`nom en double « ${a.name} » : ${noms.get(a.name)} et ${a.id}`);
+    else noms.set(a.name, a.id);
+  }
+  if(noms.size === ids.length) ok('noms uniques (listes de Home Assistant)');
 
   /* metadonnees */
   let meta = 0;

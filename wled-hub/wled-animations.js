@@ -3576,7 +3576,7 @@ const CRANE=[".XXX.","XXXXX","X.X.X","XXXXX",".X.X."];
 
 {
   const C=8, COUPS=[1,2,3,4], SOINS=[4.8,5.2,5.6,6];
-  P('vies','Barre de vie','JEU VIDÉO',
+  P('vies','Cœurs de vie','JEU VIDÉO',
     "Cinq cœurs : quatre coups les vident un par un, le dernier bat seul, puis une potion les remplit à nouveau.",
     'Dégâts + soin',C,
     [['#ff2846','Cœurs'],['#50ff8c','Potion'],['#302030','Vide']],
@@ -3906,31 +3906,31 @@ notif('fuite','Fuite d\'eau','SÉCURITÉ',"Une goutte tombe du tuyau et la flaqu
     for(let x=4-w;x<=4+w;x++)setPx(b,x,7,40,110,220);});
 
 /* ── Meteo : meme gabarit, icone du temps qu'il fait ── */
-notif('soleil','Soleil','MÉTÉO',"Le soleil et ses rayons qui tournent : « Ensoleillé ».",
+notif('soleil','Météo soleil','MÉTÉO',"Le soleil et ses rayons qui tournent : « Ensoleillé ».",
   'Icône animée + défilement','ENSOLEILLE',[255,210,40],
   [['#ffd228','Soleil'],['#ff9628','Rayons'],['#ffffff','Texte']],
   (b,p,C)=>{disc(b,4,3.5,2.2,[255,210,40],1);
     const a0=cyc(p,C,4)*.7854;
     for(let k=0;k<8;k++){const a=a0+k*.7854;addPx(b,4+Math.cos(a)*3.6,3.5+Math.sin(a)*3.6,255,150,40,.9);}});
 
-notif('nuageux','Nuageux','MÉTÉO',"Deux nuages dérivent l'un devant l'autre : « Nuageux ».",
+notif('nuageux','Météo nuageux','MÉTÉO',"Deux nuages dérivent l'un devant l'autre : « Nuageux ».",
   'Icône animée + défilement','NUAGEUX',[200,205,215],
   [['#d2d7e1','Nuage'],['#8c919b','Nuage'],['#ffffff','Texte']],
   (b,p,C,t)=>{nuage(b,1+osc(t,C,1),1,[120,125,135]); nuage(b,-1-osc(t,C,1)*1.2,3,[215,220,230]);});
 
-notif('pluie','Pluie','MÉTÉO',"La pluie tombe du nuage : « Pluie prévue ».",
+notif('pluie','Météo pluie','MÉTÉO',"La pluie tombe du nuage : « Pluie prévue ».",
   'Icône animée + défilement','PLUIE PREVUE',[80,160,255],
   [['#8c919b','Nuage'],['#50a0ff','Gouttes'],['#ffffff','Texte']],
   (b,p,C)=>{nuage(b,0,0,[140,145,155]);
     [1,3,5,7].forEach((x,i)=>{const y=3+((cyc(p,C,.6)+i*.27)%1)*5;setPx(b,x,y,80,160,255);setPx(b,x,y-1,80,160,255,.4);});});
 
-notif('neige','Neige','MÉTÉO',"Les flocons tombent en tournoyant sous le nuage : « Neige ».",
+notif('neige','Météo neige','MÉTÉO',"Les flocons tombent en tournoyant sous le nuage : « Neige ».",
   'Icône animée + défilement','NEIGE',[235,240,255],
   [['#b4b9c3','Nuage'],['#ffffff','Flocons'],['#000000','Fond']],
   (b,p,C)=>{nuage(b,0,0,[180,185,195]);
     [1,4,7,2.5,5.5].forEach((x,i)=>{const q=(cyc(p,C,1.6)+i*.21)%1;setPx(b,x+Math.sin(q*9+i),3+q*5,240,245,255);});});
 
-notif('orage','Orage','MÉTÉO',"Nuage noir, éclair qui zèbre la dalle et flash blanc : « Orage ».",
+notif('orage','Météo orage','MÉTÉO',"Nuage noir, éclair qui zèbre la dalle et flash blanc : « Orage ».",
   'Icône animée + défilement','ORAGE',[255,230,60],
   [['#50505a','Nuage'],['#ffe63c','Éclair'],['#ffffff','Flash']],
   (b,p,C)=>{const q=cyc(p,C,2), fl=q<.12;
@@ -3938,13 +3938,13 @@ notif('orage','Orage','MÉTÉO',"Nuage noir, éclair qui zèbre la dalle et flas
     nuage(b,0,0,[80,80,95]);
     if(q<.3)for(const [x,y] of [[5,3],[4,4],[5,4],[4,5],[3,6],[4,6],[3,7]])setPx(b,x,y,255,230,60);});
 
-notif('brouillard','Brouillard','MÉTÉO',"Des nappes de brume glissent à des vitesses différentes : « Brouillard ».",
+notif('brouillard','Météo brouillard','MÉTÉO',"Des nappes de brume glissent à des vitesses différentes : « Brouillard ».",
   'Icône animée + défilement','BROUILLARD',[170,175,185],
   [['#aaafb9','Brume'],['#6e737d','Brume'],['#ffffff','Texte']],
   (b,p,C)=>{[1,3,5,7].forEach((y,i)=>{const off=cyc(p,C,2+i*.7)*9;
     for(let x=0;x<=8;x++){const u=((x+off*(i%2?1:-1))%9+9)%9;if(u<6)setPx(b,x,y,170-i*18,175-i*18,185-i*18);}});});
 
-notif('vent','Vent fort','MÉTÉO',"Des bourrasques traversent l'icône en traînées : « Vent fort ».",
+notif('vent','Météo vent fort','MÉTÉO',"Des bourrasques traversent l'icône en traînées : « Vent fort ».",
   'Icône animée + défilement','VENT FORT',[180,220,255],
   [['#b4dcff','Vent'],['#ffffff','Texte'],['#000000','Fond']],
   (b,p,C)=>{[[1,0],[4,.35],[6,.7]].forEach(([y,d])=>{const q=(cyc(p,C,1.2)+d)%1, x0=-4+q*14;
