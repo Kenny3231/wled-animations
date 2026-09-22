@@ -1,0 +1,6 @@
+{
+  "name": "WLED Animations",
+  "render_readme": true,
+  "homeassistant": "2024.7.0",
+  "country": ["FR"]
+}

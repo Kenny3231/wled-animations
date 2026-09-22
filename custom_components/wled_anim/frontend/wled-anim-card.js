@@ -11,6 +11,10 @@
    la dalle executent donc exactement le meme code de rendu, et l'apercu
    n'est pas une approximation.
 
+   Installation : la carte est livree avec l'integration (HACS) et servie
+   par elle, sur /wled_anim/wled-anim-card.js. Rien a declarer dans les
+   ressources Lovelace.
+
    Configuration, par l'editeur visuel de la carte ou en YAML :
      type: custom:wled-anim-card
      acces: ha          # ou "direct"
@@ -29,7 +33,7 @@
                     court, mais seulement depuis le reseau local — et
                     impossible si Home Assistant est servi en HTTPS, le
                     navigateur refusant le contenu mixte.
-                      hub_url: http://192.168.32.130:8099
+                      hub_url: http://192.168.1.10:8099
                     hub_url absent -> hote de la page courante, port 8099.
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -960,7 +964,9 @@ WledAnimCard.CSS = `
   }
 `;
 
-customElements.define('wled-anim-card', WledAnimCard);
+// Garde contre un double chargement (ancienne ressource /local encore
+// declaree, par exemple) : un second define leverait une exception.
+if(!customElements.get('wled-anim-card')) customElements.define('wled-anim-card', WledAnimCard);
 
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1149,14 +1155,14 @@ WledAnimCardEditor.CSS = `
   code{font-size:12px}
 `;
 
-customElements.define('wled-anim-card-editor', WledAnimCardEditor);
+if(!customElements.get('wled-anim-card-editor')) customElements.define('wled-anim-card-editor', WledAnimCardEditor);
 
 window.customCards = window.customCards || [];
-window.customCards.push({
+if(!window.customCards.some(c => c.type === 'wled-anim-card')) window.customCards.push({
   type: 'wled-anim-card',
   name: 'WLED Animations',
   description: "Apercu en direct, catalogue d'animations et atelier de composition",
   preview: true
 });
 
-console.info('%c WLED-ANIM-CARD %c 1.4.1 ', 'background:#ff4d2e;color:#fff', 'background:#333;color:#fff');
+console.info('%c WLED-ANIM-CARD %c 1.5.0 ', 'background:#ff4d2e;color:#fff', 'background:#333;color:#fff');

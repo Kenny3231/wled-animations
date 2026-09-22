@@ -1,0 +1,21 @@
+{
+  "domain": "wled_anim",
+  "name": "WLED Animations",
+  "after_dependencies": [
+    "wled"
+  ],
+  "codeowners": [
+    "@Kenny3231"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http"
+  ],
+  "documentation": "https://github.com/Kenny3231/wled-animations",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Kenny3231/wled-animations/issues",
+  "requirements": [],
+  "version": "1.1.0"
+}

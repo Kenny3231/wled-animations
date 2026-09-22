@@ -7,11 +7,15 @@ le config flow, les entites natives et le service `flash`.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import timedelta
+from pathlib import Path
 
 import voluptuous as vol
 
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -29,6 +33,14 @@ from .proxy import async_register_proxy
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SELECT, Platform.SWITCH, Platform.NUMBER, Platform.TEXT]
+
+# Tout se configure par l'interface : aucune cle YAML n'est lue.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+# La carte Lovelace est livree avec l'integration : HACS installe les deux
+# d'un coup, et il n'y a plus de ressource a declarer a la main.
+CARTE_URL = f"/{DOMAIN}/wled-anim-card.js"
+CARTE_FICHIER = Path(__file__).parent / "frontend" / "wled-anim-card.js"
 
 SERVICE_FLASH = "flash"
 FLASH_SCHEMA = vol.Schema({
@@ -59,6 +71,22 @@ class PanelCoordinator(DataUpdateCoordinator):
             if p.get("id") == self.panel_id:
                 return p
         raise UpdateFailed(f"panneau {self.panel_id} absent du hub")
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Sert la carte Lovelace et l'ajoute a toutes les pages du frontend."""
+    empreinte = await hass.async_add_executor_job(_empreinte, CARTE_FICHIER)
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(CARTE_URL, str(CARTE_FICHIER), False)]
+    )
+    # L'empreinte du fichier sert de numero de version : une mise a jour
+    # HACS change l'URL, donc aucun navigateur ne garde l'ancienne carte.
+    add_extra_js_url(hass, f"{CARTE_URL}?v={empreinte}")
+    return True
+
+
+def _empreinte(fichier: Path) -> str:
+    return hashlib.sha1(fichier.read_bytes()).hexdigest()[:10]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

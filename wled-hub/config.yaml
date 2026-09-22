@@ -4,7 +4,7 @@ name: "WLED Animations Hub"
 version: "1.1.0"
 slug: wled_hub
 description: "241 animations pixel diffusees en UDP vers tes panneaux WLED, exposees dans Home Assistant"
-url: "https://github.com/"
+url: "https://github.com/Kenny3231/wled-animations"
 arch: [aarch64, amd64, armv7, armhf, i386]
 init: false
 # host_network : on envoie de l'UDP a 40 images/s vers le LAN, autant
@@ -23,18 +23,9 @@ options:
   base_topic: wledhub
   discovery_prefix: homeassistant
   http_port: 8099
-  panels:
-    - id: panel01
-      name: Panneau salon
-      host: 192.168.1.50
-      port: 21324
-      width: 32
-      height: 8
-      mapping: serpentine-h
-      flip_x: false
-      flip_y: false
-      brightness: 80
-      animation: f1lights
+  # Vide par defaut : c'est l'integration WLED Animations qui enregistre
+  # les dalles. On peut aussi en declarer ici a la main (voir le README).
+  panels: []
 schema:
   fps: int(10,60)
   base_topic: str

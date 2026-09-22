@@ -590,7 +590,7 @@
   "type": "function",
   "z": "wledcompo_tab",
   "name": "adresse du hub",
-  "func": "// LE SEUL endroit ou changer l'adresse du hub.\nconst HUB = 'http://192.168.32.130:8099';\n\nmsg.url = HUB + msg.chemin;\nmsg.method = msg.methode || 'POST';\ndelete msg.chemin; delete msg.methode;\nreturn msg;",
+  "func": "// LE SEUL endroit ou changer l'adresse du hub.\nconst HUB = 'http://192.168.1.10:8099';\n\nmsg.url = HUB + msg.chemin;\nmsg.method = msg.methode || 'POST';\ndelete msg.chemin; delete msg.methode;\nreturn msg;",
   "outputs": 1,
   "timeout": 0,
   "noerr": 0,

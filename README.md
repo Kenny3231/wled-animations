@@ -22,7 +22,8 @@ dalle : le pack 32 × 8 est le premier, les autres formats suivront.
 | `tools/wled-player.js` | Lecteur autonome : UDP DNRGB, mapping physique, carrousel, modes de test. |
 | `tools/nodered-wled-anim.js` | Corps de nœud `function` pour piloter la dalle depuis Node-RED. |
 | `wled-hub/` | L'add-on Home Assistant qui diffuse les animations (voir son README). |
-| `ha/` | L'intégration `wled_anim` et la carte Lovelace (voir `ha/INSTALLATION.md`). |
+| `custom_components/wled_anim/` | L'intégration Home Assistant **et** la carte Lovelace qu'elle sert elle-même. Installée par HACS. |
+| `hacs.json`, `repository.yaml` | Ce qui fait de ce dépôt à la fois un dépôt HACS et un dépôt d'add-ons. |
 
 La galerie, le lecteur, l'add-on et les GIF utilisent **exactement** les
 mêmes fonctions de rendu : un seul fichier, injecté ou copié tel quel.
@@ -38,6 +39,43 @@ npm run sync-hub     # recopie le moteur dans l'add-on wled-hub/
 Après `npm run build`, `dist/index.html` est la galerie complète : recherche,
 filtres par thème, GIF à télécharger, YAML Home Assistant à copier. Elle
 fonctionne hors ligne.
+
+---
+
+## Installer dans Home Assistant
+
+Deux morceaux, chacun par la voie officielle de Home Assistant, et mis à
+jour d'un clic ensuite.
+
+**1. L'add-on — le moteur qui dessine.** HACS ne distribue pas d'add-ons :
+celui-ci passe par le magasin d'add-ons.
+
+[![Ajouter le dépôt d'add-ons](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FKenny3231%2Fwled-animations)
+
+Ou à la main : Paramètres → Modules complémentaires → Boutique → menu ⋮ →
+**Dépôts** → ajouter `https://github.com/Kenny3231/wled-animations`. Puis
+installer **WLED Animations Hub** et le démarrer. Avec l'add-on Mosquitto et
+l'intégration MQTT, les entités apparaissent toutes seules ; sans MQTT,
+l'API HTTP et la carte fonctionnent quand même.
+
+**2. L'intégration et la carte — par HACS.**
+
+[![Ouvrir dans HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Kenny3231&repository=wled-animations&category=integration)
+
+Ou à la main : HACS → menu ⋮ → **Dépôts personnalisés** → l'URL du dépôt,
+catégorie **Intégration** → Télécharger → redémarrer Home Assistant. Puis
+Paramètres → Appareils et services → **Ajouter une intégration** →
+*WLED Animations* : tes dalles WLED y sont proposées avec leur IP.
+
+La carte est livrée avec l'intégration et chargée automatiquement : rien à
+déclarer dans les ressources Lovelace, il suffit d'ajouter une carte
+`custom:wled-anim-card`. L'adresse du hub à donner est
+`http://<IP de Home Assistant>:8099`.
+
+**Si tu l'avais installée à la main avant**, retire la ressource
+`/local/wled-anim-card.js` et le fichier `www/wled-anim-card.js` : ils
+feraient doublon (sans casser la carte, qui se protège d'un double
+chargement).
 
 ---
 

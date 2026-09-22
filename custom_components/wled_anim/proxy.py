@@ -5,7 +5,7 @@ Realise par domo-lab31 - Kenny3231
 Pourquoi ce relais existe
 -------------------------
 La carte Lovelace tourne dans le NAVIGATEUR, pas dans le coeur de Home
-Assistant. Quand elle vise le hub en direct (http://192.168.32.130:8099),
+Assistant. Quand elle vise le hub en direct (http://192.168.1.10:8099),
 cela ne marche que depuis le reseau local : en acces distant par un nom
 de domaine, le navigateur ne sait pas joindre une adresse du LAN, et si
 Home Assistant est servi en HTTPS il refuse en plus tout appel en clair

@@ -1,0 +1,5 @@
+# Depot d'add-ons Home Assistant : Parametres -> Modules complementaires ->
+# Boutique -> menu -> Depots -> ajouter https://github.com/Kenny3231/wled-animations
+name: "WLED Animations — domo-lab31"
+url: "https://github.com/Kenny3231/wled-animations"
+maintainer: "domo-lab31 - Kenny3231"

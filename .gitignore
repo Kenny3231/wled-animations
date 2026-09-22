@@ -18,3 +18,7 @@ wled-hub/panels.json
 # Caches d'outils locaux
 .impeccable/
 preview/
+
+# Configuration du hub lance hors Home Assistant (voir wled-hub/README.md)
+wled-hub/config.json
+__pycache__/

@@ -31,22 +31,15 @@ l'add-on embarque `wled-animations.js` tel quel.
 
 ## Installation
 
-**1. Copier le dossier.** Via Samba, SSH ou le File Editor, place ce dossier
-dans le partage `addons` de Home Assistant :
+**1. Ajouter le dépôt.** Paramètres → Modules complémentaires → Boutique →
+menu ⋮ → *Dépôts* → ajouter `https://github.com/Kenny3231/wled-animations`.
+Ou d'un clic :
 
-```
-/addons/wled_hub/
-    config.yaml
-    Dockerfile
-    run.sh
-    package.json
-    hub.js
-    wled-animations.js
-```
+[![Ajouter le dépôt d'add-ons](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FKenny3231%2Fwled-animations)
 
-**2. Installer.** Paramètres → Modules complémentaires → Boutique →
-menu ⋮ → *Vérifier les mises à jour*. « WLED Animations Hub » apparaît dans
-la section *Local add-ons*. Installe, puis démarre.
+**2. Installer.** « WLED Animations Hub » apparaît dans la boutique, sous le
+nom du dépôt. Installe, puis démarre. Les mises à jour arrivent ensuite
+comme pour n'importe quel add-on.
 
 Le Superviseur fournit automatiquement les identifiants du broker MQTT grâce
 à `services: [mqtt:need]` — rien à saisir, à condition que l'add-on Mosquitto
@@ -209,7 +202,7 @@ Le même service tourne en autonome, pour tester ou sur une autre machine :
 
 ```bash
 npm install
-cp config.example.json config.json   # renseigne mqtt_host et tes panneaux
+cp hub-standalone.example.json config.json   # renseigne mqtt_host et tes panneaux
 node hub.js
 ```
 
