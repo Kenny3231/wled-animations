@@ -295,7 +295,7 @@ class WledAnimCard extends HTMLElement {
         <div class="ligne1">
           <select id="panel" aria-label="Panneau">${this._panels.map(x =>
             `<option value="${esc(x.id)}"${x.id === this._sel ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
-          <span class="badge">${p.height} × ${p.width}</span>
+          <span class="badge">${Number(p.height)} × ${Number(p.width)}</span>
           <button id="pw" class="pw ${p.power ? 'on' : ''}" title="Allumer ou eteindre">
             <span class="point"></span>${p.power ? 'Allume' : 'Eteint'}</button>
         </div>
@@ -378,7 +378,7 @@ class WledAnimCard extends HTMLElement {
     const p = this._p;
     if (!this._anims.length) {
       vue.innerHTML = `<div class="err">Aucun pack d'animations pour la geometrie
-        ${p.height}×${p.width}.<br><small>Le pack correspondant n'est pas encore
+        ${Number(p.height)}×${Number(p.width)}.<br><small>Le pack correspondant n'est pas encore
         publie dans le depot.</small></div>`;
       return;
     }
@@ -821,7 +821,7 @@ class WledAnimCard extends HTMLElement {
       const a = this._L.getAnim(p.animation);
       quoi.innerHTML = a ? `<b>${esc(a.name)}</b>${a.tag ? ' · ' + esc(a.tag) : ''}` : esc(p.animation);
       // Une notification en cours, et ce qui attend derriere.
-      if (p.flash) quoi.innerHTML += ` <span class="notif">🔔 notification${p.file ? ' · ' + p.file + ' en attente' : ''}</span>`;
+      if (p.flash) quoi.innerHTML += ` <span class="notif">🔔 notification${p.file ? ' · ' + Number(p.file) + ' en attente' : ''}</span>`;
     }
     if (this._cells) this._cells.forEach(c =>
       c.cell.classList.toggle('actif', c.id === p.animation));
@@ -1301,4 +1301,4 @@ if(!window.customCards.some(c => c.type === 'wled-anim-card')) window.customCard
   preview: true
 });
 
-console.info('%c WLED-ANIM-CARD %c 1.6.0 ', 'background:#ff4d2e;color:#fff', 'background:#333;color:#fff');
+console.info('%c WLED-ANIM-CARD %c 1.6.1 ', 'background:#ff4d2e;color:#fff', 'background:#333;color:#fff');

@@ -80,6 +80,13 @@ Dans la carte, l'onglet **Sélection** choisit les animations qui
 apparaissent dans les listes ; une liste copiée sur ce site s'y importe.
 Détails dans le [README de l'add-on](wled-hub/README.md).
 
+**Sécurité.** Le hub n'est joignable que depuis le réseau local, avec des
+protections contre le *DNS rebinding* et les requêtes venues d'un autre
+site ; la carte, elle, passe par Home Assistant, donc par son
+authentification. Le détail est dans le
+[README de l'add-on](wled-hub/README.md#sécurité). **Ne publie pas le port
+8099 sur Internet.**
+
 **Si tu l'avais installée à la main avant**, retire la ressource
 `/local/wled-anim-card.js` et le fichier `www/wled-anim-card.js` : ils
 feraient doublon (sans casser la carte, qui se protège d'un double

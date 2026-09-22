@@ -241,6 +241,37 @@ Node-RED.
 
 ---
 
+## Sécurité
+
+Le hub écoute sur le réseau local **sans mot de passe** : c'est ce qui rend
+Node-RED et Home Assistant simples à brancher, et c'est le même choix que
+WLED lui-même. Trois verrous l'empêchent malgré tout d'être piloté depuis
+une page web quelconque :
+
+| Verrou | Ce qu'il bloque |
+|---|---|
+| En-tête `Host` : IP, noms sans point et domaines locaux seulement | un site qui ferait pointer son domaine vers ton hub (*DNS rebinding*) |
+| CORS limité aux origines du réseau local | la lecture et l'écriture depuis une page d'Internet |
+| `Origin` étrangère refusée et `application/json` exigé en écriture | un formulaire caché sur un autre site (*CSRF*) |
+
+L'option `allowed_hosts` ajoute des noms de domaine, pour qui accède à son
+Home Assistant par un nom maison.
+
+Les entrées sont bornées : corps de requête de 64 Ko, textes de 256
+caractères, 20 notifications en file, 16 panneaux. Une dalle ne peut être
+enregistrée que sur une **adresse privée ou un nom local** : le hub ne peut
+donc pas servir à arroser une machine sur Internet. Les icônes ne sont
+cherchées que chez LaMetric, sans redirection hors du domaine, avec des
+limites de taille et de décompression.
+
+**Ce qui reste vrai, et qu'aucun code ne corrige :** toute machine de ton
+réseau peut piloter la dalle. Ne publie jamais le port 8099 sur Internet —
+la carte n'en a pas besoin, elle passe par Home Assistant, qui est
+authentifié. L'add-on tourne d'ailleurs sans privilège particulier : pas
+d'accès au Superviseur, à l'API de Home Assistant ni à Docker.
+
+---
+
 ## Quand ça ne marche pas
 
 **Les entités n'apparaissent pas.** Vérifie que l'intégration MQTT est

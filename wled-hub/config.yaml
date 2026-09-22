@@ -1,7 +1,7 @@
 # Manifeste de l'add-on Home Assistant
 # Realise par domo-lab31 - Kenny3231
 name: "WLED Animations Hub"
-version: "1.2.1"
+version: "1.3.0"
 slug: wled_hub
 description: "241 animations pixel diffusees en UDP vers tes panneaux WLED, exposees dans Home Assistant"
 url: "https://github.com/Kenny3231/wled-animations"
@@ -23,6 +23,9 @@ options:
   base_topic: wledhub
   discovery_prefix: homeassistant
   http_port: 8099
+  # Noms de domaine supplementaires acceptes dans l en-tete Host (voir
+  # « SECURITE DE L API » dans hub.js). Les IP et les noms locaux le sont deja.
+  allowed_hosts: []
   # Vide par defaut : c'est l'integration WLED Animations qui enregistre
   # les dalles. On peut aussi en declarer ici a la main (voir le README).
   panels: []
@@ -31,6 +34,8 @@ schema:
   base_topic: str
   discovery_prefix: str
   http_port: port
+  allowed_hosts:
+    - str?
   panels:
     - id: match(^[a-z0-9_-]+$)
       name: str

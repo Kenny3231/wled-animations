@@ -4,8 +4,10 @@ FROM $BUILD_FROM
 RUN apk add --no-cache nodejs npm
 
 WORKDIR /app
-COPY package.json /app/
-RUN npm install --omit=dev && npm cache clean --force
+# npm ci et le verrou : la version exacte de mqtt est figee, une future
+# version piegee ne peut pas arriver toute seule dans l image.
+COPY package.json package-lock.json /app/
+RUN npm ci --omit=dev && npm cache clean --force
 
 COPY hub.js wled-animations.js categories.json lametric.js /app/
 COPY run.sh /run.sh

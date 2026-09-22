@@ -59,6 +59,7 @@
 'use strict';
 
 const dgram = require('dgram');
+const net   = require('net');
 const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
@@ -105,6 +106,68 @@ function buildMap(p){
       : px*Ht + ((serp && px%2) ? Ht-1-py : py);
   }
   return lut;
+}
+
+/* ═══ SECURITE DE L'API ═══════════════════════════════════════════════
+   Le hub ecoute sur le reseau local sans mot de passe : c'est ce qui rend
+   Node-RED et Home Assistant simples a brancher. Trois verrous l'empechent
+   pour autant d'etre pilote depuis une page web quelconque :
+
+   1. En-tete Host : seules les adresses IP, les noms sans point
+      (homeassistant) et les domaines locaux (.local, .lan, .home.arpa,
+      .internal) sont acceptes. Un site qui ferait pointer son propre
+      domaine vers l'adresse du hub — attaque dite de DNS rebinding — est
+      refuse, parce que le navigateur enverrait ce domaine en Host.
+   2. CORS : le navigateur ne peut lire ou ecrire que depuis une origine du
+      reseau local. Une page d'Internet n'obtient aucune autorisation.
+   3. Origin : une ecriture annoncant une origine etrangere est refusee
+      meme sans controle prealable du navigateur, et une ecriture doit etre
+      envoyee en application/json, ce qu'un formulaire HTML ne sait pas
+      faire sans ce controle.
+
+   L'option « allowed_hosts » ajoute des noms de domaine supplementaires, pour
+   qui accede a son Home Assistant par un nom maison.
+
+   Reste ce qui est inherent a un service local : toute machine du reseau
+   peut piloter la dalle, comme elle peut deja piloter WLED lui-meme. */
+const HOTES_EN_PLUS = (CFG.allowed_hosts || []).map(h => String(h).toLowerCase());
+const LOCAL = /\.(local|lan|home|home\.arpa|internal|localdomain)$/;
+const CORPS_MAX = 64 * 1024;      // au-dela, la requete est coupee
+const FILE_MAX  = 20;             // notifications en attente
+const PANNEAUX_MAX = 16;          // panneaux enregistres a chaud
+
+function ipPrivee(ip){
+  if(net.isIPv4(ip)){
+    const [a,b] = ip.split('.').map(Number);
+    return a===10 || a===127 || (a===172 && b>=16 && b<=31) || (a===192 && b===168)
+        || (a===169 && b===254) || (a===100 && b>=64 && b<=127);
+  }
+  const x = String(ip).toLowerCase();
+  if(x.startsWith('::ffff:')) return ipPrivee(x.slice(7));
+  return x === '::1' || x.startsWith('fe80:') || x.startsWith('fc') || x.startsWith('fd');
+}
+function nomLocal(nom){
+  if(!nom) return false;
+  if(net.isIP(nom)) return true;
+  return !nom.includes('.') || LOCAL.test(nom) || HOTES_EN_PLUS.includes(nom);
+}
+function hoteAutorise(host){
+  if(!host) return true;                       // client sans en-tete Host
+  let nom = String(host).toLowerCase();
+  nom = nom.startsWith('[') ? nom.slice(1, nom.indexOf(']')) : nom.replace(/:\d+$/, '');
+  return nomLocal(nom);
+}
+function origineLocale(origine){
+  let u; try { u = new URL(origine); } catch(e){ return false; }
+  const nom = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  return net.isIP(nom) ? ipPrivee(nom) : nomLocal(nom);
+}
+/** Destination UDP acceptable : une adresse privee, ou un nom local. */
+function hoteDalleOk(h){
+  const nom = String(h || '').toLowerCase();
+  if(!nom || nom.length > 100) return false;
+  if(net.isIP(nom)) return ipPrivee(nom) && nom !== '255.255.255.255';
+  return /^[a-z0-9.\-_]+$/.test(nom) && nomLocal(nom);
 }
 
 /* ═══ UN PANNEAU ══════════════════════════════════════════════════════ */
@@ -253,7 +316,7 @@ class Panel {
     }
     const id = req.animation;
     if(!L.getAnim(id)) return null;
-    const text = req.text != null && req.text !== '' ? String(req.text) : null;
+    const text = req.text != null && req.text !== '' ? String(req.text).slice(0, 256) : null;
     const item = { animation:id, text, seconds:dureeFlash(id, req.seconds, text || this.text) };
     const cle = x => x.animation + '|' + (x.text || '');
     if(req.mode === 'maintenant' || req.mode === 'now'){
@@ -264,7 +327,9 @@ class Panel {
       // une porte ouverte deux fois de suite ne fait qu'un message.
       const doublon = (this.flashEnCours && cle(this.flashEnCours) === cle(item))
                    || this.file.some(x => cle(x) === cle(item));
-      if(!doublon) this.file.push(item);
+      if(this.file.length >= FILE_MAX){
+        console.warn('[%s] file pleine (%d) : notification ignoree', this.id, FILE_MAX);
+      } else if(!doublon) this.file.push(item);
       if(!this.flashEnCours) this.suivant();
     }
     // Toujours republier : une notification simplement mise en attente
@@ -608,9 +673,9 @@ function handleCommand(panelId, field, payload){
     case 'power':      p.annulerFile(); p.power = (v.toUpperCase()==='ON'); break;
     case 'brightness': p.brightness = Math.max(0,Math.min(100,parseFloat(v)||0)); break;
     case 'animation':  p.annulerFile(); p.load(BY_NAME[v] || v); break;
-    case 'text':       p.text = v; if(p.animation==='message') p.load('message'); break;
-    case 'compose_text':  p.majCompose({ text:v });  break;
-    case 'compose_text2': p.majCompose({ text2:v }); break;
+    case 'text':       p.text = v.slice(0,256); if(p.animation==='message') p.load('message'); break;
+    case 'compose_text':  p.majCompose({ text:v.slice(0,128) });  break;
+    case 'compose_text2': p.majCompose({ text2:v.slice(0,128) }); break;
     case 'icon':
       // « 1431 » ou « 1431,510,1078 » ou vide pour tout retirer.
       p.chargerIcones(v === '' || v === 'none' ? [] : v.split(','))
@@ -686,17 +751,29 @@ http.createServer((req,res) => {
   // CORS indispensable : la carte Lovelace est servie par Home Assistant
   // sur le port 8123 et interroge ce hub sur 8099. Sans ces en-tetes le
   // navigateur bloque toutes les requetes de la carte.
-  const CORS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  };
-  if(req.method === 'OPTIONS'){ res.writeHead(204, CORS); return res.end(); }
-
+  const CORS = { 'X-Content-Type-Options':'nosniff', 'Vary':'Origin' };
   const json = (code,obj) => {
     res.writeHead(code, Object.assign({'Content-Type':'application/json'}, CORS));
     res.end(JSON.stringify(obj));
   };
+
+  // Voir « SECURITE DE L'API » plus haut.
+  if(!hoteAutorise(req.headers.host)) return json(403, {error:'hote refuse'});
+
+  const origine = req.headers.origin;
+  if(origine && origineLocale(origine)){
+    CORS['Access-Control-Allow-Origin'] = origine;
+    CORS['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS';
+    CORS['Access-Control-Allow-Headers'] = 'Content-Type';
+    CORS['Access-Control-Max-Age'] = '600';
+  }
+  if(req.method === 'OPTIONS'){ res.writeHead(204, CORS); return res.end(); }
+
+  if(req.method !== 'GET' && req.method !== 'HEAD'){
+    if(origine && !origineLocale(origine)) return json(403, {error:'origine refusee'});
+    if(req.method === 'POST' && !/^application\/json\b/i.test(req.headers['content-type'] || ''))
+      return json(415, {error:'Content-Type: application/json attendu'});
+  }
 
   if(req.method==='GET' && url==='/api/panels')
     return json(200, panels.map(p => Object.assign(
@@ -710,7 +787,8 @@ http.createServer((req,res) => {
 
   if(req.method==='POST' && url==='/api/selection'){
     let body='';
-    req.on('data',c=>body+=c);
+    // Un corps demesure serait avale en memoire : on coupe la connexion.
+    req.on('data',c=>{ body+=c; if(body.length > CORPS_MAX) req.destroy(); });
     req.on('end',()=>{
       let j; try{ j=JSON.parse(body||'{}'); }
       catch(e){ return json(400,{error:'JSON invalide'}); }
@@ -777,11 +855,25 @@ http.createServer((req,res) => {
   // Enregistrement d'un panneau par le plugin Home Assistant.
   if(req.method==='POST' && url==='/api/panels'){
     let body='';
-    req.on('data',c=>body+=c);
+    // Un corps demesure serait avale en memoire : on coupe la connexion.
+    req.on('data',c=>{ body+=c; if(body.length > CORPS_MAX) req.destroy(); });
     req.on('end',()=>{
       let c; try{ c=JSON.parse(body||'{}'); }
       catch(e){ return json(400,{error:'JSON invalide'}); }
       if(!c.id || !c.host) return json(400,{error:'id et host obligatoires'});
+      if(!/^[a-z0-9_-]{1,40}$/i.test(String(c.id)))
+        return json(400,{error:'id : lettres, chiffres, tiret et souligne, 40 au plus'});
+      // La dalle recoit de l'UDP en continu : on refuse d'arroser une
+      // adresse publique, et donc de servir de relais vers Internet.
+      if(!hoteDalleOk(c.host))
+        return json(400,{error:'host : adresse privee ou nom local attendu'});
+      const port = c.port === undefined ? 21324 : parseInt(c.port,10);
+      if(!(port >= 1 && port <= 65535)) return json(400,{error:'port invalide'});
+      c.port = port;
+      c.width  = Math.max(8, Math.min(256, parseInt(c.width,10)  || 32));
+      c.height = Math.max(8, Math.min(64,  parseInt(c.height,10) || 8));
+      if(!panels.find(p => p.id===c.id) && panels.filter(p => p.dynamic).length >= PANNEAUX_MAX)
+        return json(429,{error:'trop de panneaux enregistres'});
 
       // Le plugin Home Assistant reenregistre ses panneaux a CHAQUE
       // demarrage du coeur, et n'envoie que la geometrie. Sans cette
@@ -835,7 +927,8 @@ http.createServer((req,res) => {
     const p = panels.find(x => x.id===m[1]);
     if(!p) return json(404,{error:'panneau inconnu'});
     let body='';
-    req.on('data',c=>body+=c);
+    // Un corps demesure serait avale en memoire : on coupe la connexion.
+    req.on('data',c=>{ body+=c; if(body.length > CORPS_MAX) req.destroy(); });
     req.on('end',()=>{
       let j; try{ j=JSON.parse(body||'{}'); }
       catch(e){ return json(400,{error:'JSON invalide'}); }
@@ -847,7 +940,7 @@ http.createServer((req,res) => {
         if(j.power!==undefined || j.animation!==undefined) p.annulerFile();
         if(j.power!==undefined)      p.power = !!j.power;
         if(j.brightness!==undefined) p.brightness = Math.max(0,Math.min(100,+j.brightness));
-        if(j.text!==undefined)       p.text = String(j.text);
+        if(j.text!==undefined)       p.text = String(j.text).slice(0,256);
 
         // Composition. Les couleurs arrivent en [r,g,b] ; tout ce qui
         // n'est pas un triplet valide est ignore plutot que de peindre
@@ -856,8 +949,8 @@ http.createServer((req,res) => {
                           v.every(n => typeof n === 'number' && isFinite(n)))
           ? v.map(n => Math.max(0, Math.min(255, Math.round(n)))) : null;
         const maj = {};
-        if(typeof j.text2 === 'string')      maj.text2 = j.text2;
-        if(typeof j.compose_text === 'string') maj.text = j.compose_text;
+        if(typeof j.text2 === 'string')      maj.text2 = j.text2.slice(0,128);
+        if(typeof j.compose_text === 'string') maj.text = j.compose_text.slice(0,128);
         if(['solid','gradient','rainbow'].indexOf(j.text_mode) >= 0) maj.textMode = j.text_mode;
         if(rgb(j.text_color)) maj.textColor = rgb(j.text_color);
         if(rgb(j.text_to))    maj.textTo    = rgb(j.text_to);

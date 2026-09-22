@@ -26,11 +26,17 @@ const fs    = require('fs');
 const path  = require('path');
 
 const HOTE   = 'developer.lametric.com';
+const TAILLE_MAX   = 2 * 1024 * 1024;   // reponse : 2 Mo suffisent largement
+const PIXELS_MAX   = 256 * 256;         // une icone fait 8x8, sa vignette 45x45
+const INFLATE_MAX  = 4 * 1024 * 1024;   // borne la decompression (bombe zip)
+const REDIRECTIONS = 3;
+const CACHE_MAX    = 2000;              // icones gardees sur disque
 const RECHER = '/api/v1/dev/preloadicons';
 
 /* ═══ TELECHARGEMENT ══════════════════════════════════════════════════ */
-function get(chemin, opt){
+function get(chemin, opt, saut){
   const o = opt || {};
+  if((saut || 0) > REDIRECTIONS) return Promise.reject(new Error('trop de redirections'));
   const binaire = !!o.binaire, delai = o.timeout || 12000;
   return new Promise(function(ok, ko){
     const req = https.get({ host:HOTE, path:chemin,
@@ -39,7 +45,7 @@ function get(chemin, opt){
       if(res.statusCode >= 300 && res.statusCode < 400 && res.headers.location){
         res.resume();
         const l = res.headers.location;
-        if(l.charAt(0) === '/') return get(l, o).then(ok, ko);
+        if(l.charAt(0) === '/') return get(l, o, (saut || 0) + 1).then(ok, ko);
         return ko(new Error('redirection hors domaine : ' + l));
       }
       if(res.statusCode !== 200){
@@ -47,7 +53,13 @@ function get(chemin, opt){
         return ko(new Error('HTTP ' + res.statusCode + ' sur ' + chemin));
       }
       const morceaux = [];
-      res.on('data', function(c){ morceaux.push(c); });
+      let recu = 0;
+      res.on('data', function(c){
+        recu += c.length;
+        // Une reponse demesuree n'a rien a faire ici : on coupe.
+        if(recu > TAILLE_MAX){ res.destroy(); return ko(new Error('reponse trop grande')); }
+        morceaux.push(c);
+      });
       res.on('end', function(){
         const b = Buffer.concat(morceaux);
         if(binaire) return ok(b);
@@ -111,7 +123,9 @@ function decodePNG(buf){
   const canaux = { 0:1, 2:3, 3:1, 4:2, 6:4 }[ihdr.couleur];
   if(!canaux) throw new Error('PNG type couleur ' + ihdr.couleur + ' non gere');
 
-  const brut = zlib.inflateSync(Buffer.concat(idat));
+  if(!(ihdr.w > 0 && ihdr.h > 0) || ihdr.w * ihdr.h > PIXELS_MAX)
+    throw new Error('PNG de ' + ihdr.w + 'x' + ihdr.h + ' : hors des tailles attendues');
+  const brut = zlib.inflateSync(Buffer.concat(idat), { maxOutputLength: INFLATE_MAX });
   const w = ihdr.w, h = ihdr.h, pas = w * canaux;
   const lignes = Buffer.alloc(h * pas);
 
@@ -206,6 +220,8 @@ function decodeGIF(buf){
   const sig = buf.toString('ascii', 0, 6);
   if(sig !== 'GIF87a' && sig !== 'GIF89a') throw new Error('ce n est pas un GIF');
   const W = buf.readUInt16LE(6), H = buf.readUInt16LE(8);
+  if(!(W > 0 && H > 0) || W * H > PIXELS_MAX)
+    throw new Error('GIF de ' + W + 'x' + H + ' : hors des tailles attendues');
   const flags = buf[10];
   let i = 13, gct = null;
   if(flags & 0x80){ const n = 2 << (flags & 7); gct = buf.subarray(i, i + n * 3); i += n * 3; }
@@ -301,6 +317,9 @@ function lireCache(id){
 function ecrireCache(id, obj){
   try {
     fs.mkdirSync(DOSSIER, { recursive: true });
+    // Le cache ne doit pas remplir le disque si on demande des milliers
+    // d'icones : passe la borne, on sert sans garder.
+    if(fs.readdirSync(DOSSIER).length >= CACHE_MAX) return;
     fs.writeFileSync(cacheChemin(id), JSON.stringify(obj));
   } catch(e){ console.error('[icones] cache %s : %s', id, e.message); }
 }

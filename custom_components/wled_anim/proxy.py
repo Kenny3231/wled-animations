@@ -85,6 +85,13 @@ class WledAnimProxyView(HomeAssistantView):
         return await self._relais(request, chemin, "GET")
 
     async def post(self, request: web.Request, chemin: str) -> web.StreamResponse:
+        # La selection vaut pour tout le monde : seul un administrateur la change.
+        if chemin == "api/selection":
+            utilisateur = request.get("hass_user")
+            if utilisateur is None or not utilisateur.is_admin:
+                return web.json_response(
+                    {"error": "reserve aux administrateurs"}, status=403
+                )
         charge = None
         if request.can_read_body:
             try:
@@ -115,11 +122,20 @@ class WledAnimProxyView(HomeAssistantView):
             async with async_timeout.timeout(TIMEOUT):
                 async with session.request(methode, url, json=charge) as amont:
                     corps = await amont.read()
+                    # Le type est impose ici, jamais recopie du hub : sinon un
+                    # hub pirate ferait servir du HTML sous l'adresse de Home
+                    # Assistant, donc dans la session de l'utilisateur.
+                    type_mime = (
+                        "application/javascript"
+                        if chemin == "api/engine.js"
+                        else "application/json"
+                    )
                     return web.Response(
                         body=corps,
                         status=amont.status,
-                        content_type=amont.content_type,
-                        charset=amont.charset or "utf-8",
+                        content_type=type_mime,
+                        charset="utf-8",
+                        headers={"X-Content-Type-Options": "nosniff"},
                     )
         except aiohttp.ClientError as err:
             _LOGGER.debug("Relais %s %s : %s", methode, url, err)

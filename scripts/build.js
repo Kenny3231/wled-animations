@@ -106,6 +106,8 @@ for(const geo of packs){
 
 ecrire(path.join(DIST, 'index.json'), json(racine));
 
+let empreinteScript = null;
+
 /* ═══ GALERIE ═════════════════════════════════════════════════════════ */
 {
   const geo    = '32x8';
@@ -136,14 +138,43 @@ ecrire(path.join(DIST, 'index.json'), json(racine));
   new vm.Script(script, { filename: 'dist/index.html' });
 
   ecrire(path.join(DIST, 'index.html'), html);
+  // Empreinte du script embarque : la politique de contenu n'autorisera que
+  // lui. Le site ne charge aucune ressource exterieure, donc tout le reste
+  // peut etre interdit.
+  empreinteScript = 'sha256-' + crypto.createHash('sha256').update(script, 'utf8').digest('base64');
   console.log(`  galerie : dist/index.html (${(html.length / 1024).toFixed(0)} Ko)`);
 }
 
 /* ═══ EN-TETES CLOUDFLARE PAGES ═══════════════════════════════════════
    CORS ouvert sur le catalogue : la carte Lovelace le lit depuis le
-   navigateur, sur une autre origine. Cache court pour que le hub voie
-   une nouvelle animation quelques minutes apres le push. */
+   navigateur, sur une autre origine. Cache court pour que le hub voie une
+   nouvelle animation quelques minutes apres le push.
+
+   Le reste sont des en-tetes de securite : la page n'a le droit de charger
+   que son propre script (reconnu a son empreinte), aucune page exterieure
+   ne peut l'afficher dans un cadre, et rien n'est envoye ailleurs. */
+const csp = [
+  "default-src 'self'",
+  "script-src '" + empreinteScript + "'",
+  "style-src 'self' 'unsafe-inline'",     // feuille embarquee et pastilles de couleur
+  "img-src 'self' data: blob:",           // apercus et GIF fabriques dans la page
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'"
+].join('; ');
+
 ecrire(path.join(DIST, '_headers'), [
+  '/*',
+  '  X-Content-Type-Options: nosniff',
+  '  Referrer-Policy: strict-origin-when-cross-origin',
+  '  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  '  Cross-Origin-Opener-Policy: same-origin',
+  '/',
+  '  Content-Security-Policy: ' + csp,
+  '/index.html',
+  '  Content-Security-Policy: ' + csp,
   '/index.json',
   '  Access-Control-Allow-Origin: *',
   '  Cache-Control: public, max-age=300',
