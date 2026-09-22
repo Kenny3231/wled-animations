@@ -267,6 +267,9 @@ class Panel {
       if(!doublon) this.file.push(item);
       if(!this.flashEnCours) this.suivant();
     }
+    // Toujours republier : une notification simplement mise en attente
+    // doit aussi faire monter le compteur « en attente » dans Home Assistant.
+    publishState(this);
     return { en_cours:this.flashEnCours && this.flashEnCours.animation, attente:this.file.length };
   }
 
