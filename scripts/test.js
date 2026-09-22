@@ -167,6 +167,10 @@ if(fs.existsSync(HUB)){
   if(fs.readFileSync(HUB, 'utf8') !== sources['32x8'])
     ko('wled-hub/wled-animations.js differe de packs/32x8 — lancer « npm run sync-hub »');
   else ok('copie embarquee identique a la source');
+  const catHub = path.join(ROOT, 'wled-hub', 'categories.json');
+  if(!fs.existsSync(catHub) || fs.readFileSync(catHub, 'utf8') !== fs.readFileSync(path.join(PACKS, '32x8', 'categories.json'), 'utf8'))
+    ko('wled-hub/categories.json differe de packs/32x8 — lancer « npm run sync-hub »');
+  else ok('categories embarquees identiques a la source');
 }
 
 console.log(echecs ? `\n  ${echecs} echec(s)\n` : '\n  Tout est bon\n');

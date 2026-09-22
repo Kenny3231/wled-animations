@@ -2,14 +2,18 @@
 
 Realise par domo-lab31 - Kenny3231
 
-Le rendu est assure par l'add-on (JavaScript). Cette integration apporte
-le config flow, les entites natives et le service `flash`.
+Le rendu est assure par l'add-on (JavaScript), qui publie lui-meme toutes
+les entites par decouverte MQTT : alimentation, animation, luminosite,
+message, composition, icones, notification en cours et file d'attente.
+Cette integration apporte ce que MQTT ne sait pas faire :
+  - l'ajout d'une dalle depuis l'interface (config flow)
+  - le service `wled_anim.flash`, avec sa file d'attente
+  - la carte Lovelace, servie ici, et son relais vers le hub
 """
 from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import timedelta
 from pathlib import Path
 
 import voluptuous as vol
@@ -17,22 +21,19 @@ import voluptuous as vol
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
     CONF_FLIP_X, CONF_FLIP_Y, CONF_HEIGHT, CONF_HOST, CONF_HUB_URL,
-    CONF_MAPPING, CONF_PANEL_ID, CONF_WIDTH, DOMAIN, SCAN_INTERVAL_SECONDS,
+    CONF_MAPPING, CONF_PANEL_ID, CONF_WIDTH, DOMAIN,
 )
 from .hub import HubError, WledAnimHub
 from .proxy import async_register_proxy
 
 _LOGGER = logging.getLogger(__name__)
-
-PLATFORMS = [Platform.SELECT, Platform.SWITCH, Platform.NUMBER, Platform.TEXT]
 
 # Tout se configure par l'interface : aucune cle YAML n'est lue.
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -43,34 +44,16 @@ CARTE_URL = f"/{DOMAIN}/wled-anim-card.js"
 CARTE_FICHIER = Path(__file__).parent / "frontend" / "wled-anim-card.js"
 
 SERVICE_FLASH = "flash"
+MODES = ["file", "maintenant", "vider"]
 FLASH_SCHEMA = vol.Schema({
     vol.Required("panel"): cv.string,
-    vol.Required("animation"): cv.string,
-    vol.Optional("seconds", default=10): vol.All(int, vol.Range(min=1, max=600)),
+    # Facultatif pour le seul mode « vider ».
+    vol.Optional("animation"): cv.string,
+    # Absent : un cycle complet de l'animation, le message defile en entier.
+    vol.Optional("seconds"): vol.All(vol.Coerce(float), vol.Range(min=1, max=600)),
+    vol.Optional("text"): cv.string,
+    vol.Optional("mode", default="file"): vol.In(MODES),
 })
-
-
-class PanelCoordinator(DataUpdateCoordinator):
-    """Interroge le hub et garde l'etat du panneau a jour."""
-
-    def __init__(self, hass: HomeAssistant, hub: WledAnimHub, panel_id: str) -> None:
-        super().__init__(
-            hass, _LOGGER, name=f"{DOMAIN}_{panel_id}",
-            update_interval=timedelta(seconds=SCAN_INTERVAL_SECONDS),
-        )
-        self.hub = hub
-        self.panel_id = panel_id
-        self.catalog: list[dict] = []
-
-    async def _async_update_data(self) -> dict:
-        try:
-            panels = await self.hub.panels()
-        except HubError as err:
-            raise UpdateFailed(str(err)) from err
-        for p in panels:
-            if p.get("id") == self.panel_id:
-                return p
-        raise UpdateFailed(f"panneau {self.panel_id} absent du hub")
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -90,12 +73,14 @@ def _empreinte(fichier: Path) -> str:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Mise en service d'un panneau."""
+    """Mise en service d'un panneau : on l'enregistre aupres du hub."""
     data = {**entry.data, **entry.options}
     hub = WledAnimHub(async_get_clientsession(hass), data[CONF_HUB_URL])
     panel_id = data[CONF_PANEL_ID]
 
     # Le hub peut avoir redemarre sans son fichier d'etat : on reenregistre.
+    # Il reprend de lui-meme l'animation, la composition et la luminosite
+    # s'il connaissait deja le panneau.
     try:
         await hub.register({
             "id": panel_id, "name": entry.title, "host": data[CONF_HOST],
@@ -105,40 +90,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "flip_y": data.get(CONF_FLIP_Y, False),
         })
     except HubError as err:
-        _LOGGER.warning("Hub injoignable au demarrage (%s), nouvelle tentative au sondage", err)
-
-    coordinator = PanelCoordinator(hass, hub, panel_id)
-    try:
-        coordinator.catalog = await hub.catalog(data[CONF_WIDTH], data[CONF_HEIGHT])
-    except HubError:
-        coordinator.catalog = []
-    if not coordinator.catalog:
-        _LOGGER.warning(
-            "Aucune animation pour la geometrie %sx%s : le pack correspondant "
-            "n'est pas encore publie dans le depot",
-            data[CONF_WIDTH], data[CONF_HEIGHT],
-        )
-
-    await coordinator.async_config_entry_first_refresh()
+        _LOGGER.warning("Hub injoignable au demarrage (%s) : le panneau sera "
+                        "enregistre au prochain rechargement", err)
 
     # Relais HTTP : c'est lui qui rend la carte utilisable en acces
     # distant, ou le navigateur ne peut pas joindre le hub en direct.
     async_register_proxy(hass)
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"hub": hub, "panel_id": panel_id}
     entry.async_on_unload(entry.add_update_listener(_reload))
 
     if not hass.services.has_service(DOMAIN, SERVICE_FLASH):
         async def _flash(call: ServiceCall) -> None:
-            """Joue une animation puis restaure l'etat precedent."""
+            """Met une notification en file d'attente sur un panneau."""
             target = call.data["panel"]
-            for coord in hass.data[DOMAIN].values():
-                if coord.panel_id == target:
-                    await coord.hub.flash(target, call.data["animation"], call.data["seconds"])
-                    await coord.async_request_refresh()
+            mode = call.data["mode"]
+            if mode != "vider" and not call.data.get("animation"):
+                raise HomeAssistantError("Il faut une animation (sauf en mode vider)")
+            for info in hass.data[DOMAIN].values():
+                if info["panel_id"] == target:
+                    try:
+                        await info["hub"].flash(
+                            target, call.data.get("animation"),
+                            seconds=call.data.get("seconds"),
+                            text=call.data.get("text"), mode=mode,
+                        )
+                    except HubError as err:
+                        raise HomeAssistantError(f"Hub injoignable : {err}") from err
                     return
-            _LOGGER.error("Service flash : panneau inconnu %s", target)
+            raise HomeAssistantError(f"Panneau inconnu : {target}")
 
         hass.services.async_register(DOMAIN, SERVICE_FLASH, _flash, schema=FLASH_SCHEMA)
 
@@ -146,12 +126,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    unload = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
-        if not hass.data[DOMAIN]:
-            hass.services.async_remove(DOMAIN, SERVICE_FLASH)
-    return unload
+    hass.data[DOMAIN].pop(entry.entry_id, None)
+    if not hass.data[DOMAIN]:
+        hass.services.async_remove(DOMAIN, SERVICE_FLASH)
+    return True
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

@@ -75,6 +75,11 @@ class WledAnimCard extends HTMLElement {
     this._sel = null;
     this._onglet = 'anims';
     this._filtre = '';
+    this._categories = [];
+    this._choix = null;           // selection en cours d'edition (Set d'ids)
+    this._choixModifie = false;
+    this._catFiltre = '';
+    this._importOuvert = false;
     this._icones = [];
     this._iconeCache = new Map();     // id -> images decodees
     // setConfig est rappele a chaque frappe dans l'editeur visuel : un second
@@ -209,6 +214,7 @@ class WledAnimCard extends HTMLElement {
     const q = p ? `?w=${p.width}&h=${p.height}` : '';
     const cat = await this._json('/api/catalog' + q);
     this._anims = cat.animations || [];
+    this._categories = cat.categories || [];
     // Les icones du panneau doivent etre en main pour que l'apercu les dessine.
     for (const id of this._ids(p)) await this._icone(id);
   }
@@ -306,6 +312,7 @@ class WledAnimCard extends HTMLElement {
       <nav class="onglets" role="tablist">
         <button data-o="anims"   class="${this._onglet === 'anims' ? 'actif' : ''}">Animations</button>
         <button data-o="compose" class="${this._onglet === 'compose' ? 'actif' : ''}">Composition</button>
+        <button data-o="choix"   class="${this._onglet === 'choix' ? 'actif' : ''}">Sélection</button>
       </nav>
 
       <section id="vue"></section>`;
@@ -361,6 +368,7 @@ class WledAnimCard extends HTMLElement {
     if (this._io) { this._io.disconnect(); this._io = null; }
     this._cells = null;
     if (this._onglet === 'anims') this._vueAnims(vue);
+    else if (this._onglet === 'choix') this._vueChoix(vue);
     else this._vueCompose(vue);
     this._sync();
   }
@@ -374,14 +382,16 @@ class WledAnimCard extends HTMLElement {
         publie dans le depot.</small></div>`;
       return;
     }
+    // Seulement la selection : c'est tout l'interet de l'avoir faite.
+    const base = this._anims.filter(a => a.selected !== false);
     const f = this._filtre.trim().toLowerCase();
-    const liste = f ? this._anims.filter(a =>
-      (a.name + ' ' + (a.tag || '')).toLowerCase().indexOf(f) >= 0) : this._anims;
+    const liste = f ? base.filter(a =>
+      (a.name + ' ' + (a.tag || '')).toLowerCase().indexOf(f) >= 0) : base;
 
     vue.innerHTML = `
       <div class="barre">
         <input type="search" id="q" placeholder="Filtrer les animations…" value="${esc(this._filtre)}">
-        <span class="compte">${liste.length} / ${this._anims.length}</span>
+        <span class="compte">${liste.length} / ${base.length}</span>
       </div>
       <div class="grille" id="grille"></div>`;
 
@@ -403,12 +413,12 @@ class WledAnimCard extends HTMLElement {
       cell.dataset.id = a.id;
       cell.innerHTML = `<div class="ecran"><canvas></canvas></div>
         <div class="pied"><span class="nm" title="${esc(a.name)}">${esc(a.name)}</span>
-        <button class="flash" title="Jouer 12 s puis revenir">⚡</button></div>`;
+        <button class="flash" title="Notification : jouer une fois en entier, a la suite des autres, puis revenir">⚡</button></div>`;
       cell.querySelector('canvas').onclick = () =>
         this._post(`/api/panel/${p.id}`, { animation: a.id });
       cell.querySelector('.flash').onclick = ev => {
         ev.stopPropagation();
-        this._post(`/api/panel/${p.id}/flash`, { animation: a.id, seconds: 12 });
+        this._post(`/api/panel/${p.id}/flash`, { animation: a.id });
       };
       grille.appendChild(cell);
       const c = this._instance(cell.querySelector('canvas'), a.id, 6);
@@ -421,6 +431,105 @@ class WledAnimCard extends HTMLElement {
       if (c) c.vis = e.isIntersecting;
     }), { root: null, rootMargin: '200px' });
     this._cells.forEach(c => this._io.observe(c.cell));
+  }
+
+  /* ═══ ONGLET SELECTION ═══════════════════════════════════════════
+     Le site propose des centaines d'animations : ici on garde celles qui
+     doivent apparaitre dans Home Assistant (selecteur MQTT, onglet
+     Animations). Une automatisation peut toujours jouer les autres par
+     leur identifiant. La liste copiee sur le site s'importe telle quelle. */
+  _vueChoix(vue) {
+    if (!this._choix) this._choix = new Set(this._anims.filter(a => a.selected !== false).map(a => a.id));
+    const total = this._anims.length;
+    const dansCat = a => !this._catFiltre || a.category === this._catFiltre;
+    const f = this._filtre.trim().toLowerCase();
+    const liste = this._anims.filter(a => dansCat(a) &&
+      (!f || (a.name + ' ' + a.id + ' ' + (a.tag || '')).toLowerCase().indexOf(f) >= 0));
+    const cats = [{ id: '', name: 'Toutes' }].concat(this._categories);
+    const compte = c => {
+      const dedans = c.id ? this._anims.filter(a => a.category === c.id) : this._anims;
+      return `${dedans.filter(a => this._choix.has(a.id)).length}/${dedans.length}`;
+    };
+    const peutEnregistrer = () => this._choixModifie && this._choix.size > 0;
+
+    vue.innerHTML = `
+      <div class="barre">
+        <input type="search" id="q" placeholder="Filtrer…" value="${esc(this._filtre)}">
+        <span class="compte" id="nb">${this._choix.size} / ${total} gardées</span>
+      </div>
+      <div class="puces" id="cats">${cats.map(c => `<button data-c="${esc(c.id)}"
+        class="${this._catFiltre === c.id ? 'actif' : ''}">${esc(c.name)} <i>${compte(c)}</i></button>`).join('')}</div>
+      <div class="actions">
+        <button id="tous" class="mini">Tout cocher</button>
+        <button id="aucun" class="mini">Tout décocher</button>
+        <button id="imp" class="mini">Importer une liste</button>
+        <span class="espace"></span>
+        <button id="complet" class="mini" title="Remettre tout le catalogue dans les listes">Tout le catalogue</button>
+        <button id="enreg" class="mini primaire" ${peutEnregistrer() ? '' : 'disabled'}>Enregistrer</button>
+      </div>
+      ${this._importOuvert ? `<div class="import">
+        <textarea id="txt" rows="3" placeholder="Colle ici les identifiants copiés sur le site (un par ligne, ou séparés par des virgules)"></textarea>
+        <button id="okimp" class="mini primaire">Remplacer la sélection</button></div>` : ''}
+      <p class="aide">Les animations décochées disparaissent du sélecteur MQTT et de l'onglet
+        Animations. Une automatisation peut toujours les jouer par leur identifiant.</p>
+      <ul class="choix">${liste.map(a => `<li><label><input type="checkbox" data-id="${esc(a.id)}"
+        ${this._choix.has(a.id) ? 'checked' : ''}><span class="nm">${esc(a.name)}</span><code>${esc(a.id)}</code></label></li>`).join('')}</ul>`;
+
+    // Reconstruire en gardant la position dans la liste.
+    const refaire = () => {
+      const l = vue.querySelector('.choix'), top = l ? l.scrollTop : 0;
+      this._vueChoix(vue);
+      const n = vue.querySelector('.choix'); if (n) n.scrollTop = top;
+    };
+
+    const q = vue.querySelector('#q');
+    q.oninput = e => {
+      this._filtre = e.target.value;
+      const pos = e.target.selectionStart;
+      this._vueChoix(vue);
+      const n = vue.querySelector('#q'); n.focus(); n.setSelectionRange(pos, pos);
+    };
+    vue.querySelectorAll('#cats button').forEach(b => b.onclick = () => { this._catFiltre = b.dataset.c; refaire(); });
+    vue.querySelectorAll('.choix input').forEach(cb => cb.onchange = () => {
+      cb.checked ? this._choix.add(cb.dataset.id) : this._choix.delete(cb.dataset.id);
+      this._choixModifie = true;
+      // Pas de reconstruction ici : juste les compteurs, la liste ne saute pas.
+      vue.querySelector('#nb').textContent = `${this._choix.size} / ${total} gardées`;
+      vue.querySelectorAll('#cats button').forEach(b => {
+        const c = cats.find(x => x.id === b.dataset.c); if (c) b.querySelector('i').textContent = compte(c);
+      });
+      vue.querySelector('#enreg').disabled = !peutEnregistrer();
+    });
+    // « Tout cocher / décocher » agit sur ce qui est affiché : une catégorie
+    // entière quand une puce est choisie, le résultat du filtre sinon.
+    vue.querySelector('#tous').onclick = () => { liste.forEach(a => this._choix.add(a.id)); this._choixModifie = true; refaire(); };
+    vue.querySelector('#aucun').onclick = () => { liste.forEach(a => this._choix.delete(a.id)); this._choixModifie = true; refaire(); };
+    vue.querySelector('#imp').onclick = () => { this._importOuvert = !this._importOuvert; refaire(); };
+    const ok = vue.querySelector('#okimp');
+    if (ok) ok.onclick = () => {
+      const connus = new Set(this._anims.map(a => a.id));
+      const ids = (vue.querySelector('#txt').value.match(/[a-z0-9_-]+/gi) || [])
+        .map(x => x.toLowerCase()).filter(id => connus.has(id));
+      if (!ids.length) { vue.querySelector('#txt').value = ''; vue.querySelector('#txt').placeholder = 'Aucun identifiant reconnu'; return; }
+      this._choix = new Set(ids); this._importOuvert = false; this._choixModifie = true; refaire();
+    };
+    vue.querySelector('#complet').onclick = () => this._enregistrerChoix({ tout: true }, vue);
+    vue.querySelector('#enreg').onclick = () => this._enregistrerChoix({ ids: [...this._choix] }, vue);
+  }
+
+  async _enregistrerChoix(corps, vue) {
+    const b = vue.querySelector('#enreg');
+    if (b) { b.disabled = true; b.textContent = 'Enregistrement…'; }
+    try {
+      await this._envoi('/api/selection', corps);
+      this._choix = null; this._choixModifie = false;
+      await this._refresh();
+    } catch (e) {
+      console.warn('[wled-anim-card] selection :', e.message);
+      if (b) { b.disabled = false; b.textContent = 'Échec : ' + e.message; }
+      return;
+    }
+    this._vueChoix(vue);
   }
 
   /* ═══ ONGLET COMPOSITION ═════════════════════════════════════════ */
@@ -711,6 +820,8 @@ class WledAnimCard extends HTMLElement {
     if (quoi) {
       const a = this._L.getAnim(p.animation);
       quoi.innerHTML = a ? `<b>${esc(a.name)}</b>${a.tag ? ' · ' + esc(a.tag) : ''}` : esc(p.animation);
+      // Une notification en cours, et ce qui attend derriere.
+      if (p.flash) quoi.innerHTML += ` <span class="notif">🔔 notification${p.file ? ' · ' + p.file + ' en attente' : ''}</span>`;
     }
     if (this._cells) this._cells.forEach(c =>
       c.cell.classList.toggle('actif', c.id === p.animation));
@@ -878,6 +989,31 @@ WledAnimCard.CSS = `
   .segments button:last-child{border-right:0}
   .segments button.actif{background:var(--acc);color:#fff}
   .segments.petit button{padding:5px 10px;font-size:12px}
+
+  /* onglet Selection */
+  .puces{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:thin}
+  .puces button{flex:none;padding:5px 10px;border-radius:999px;font:inherit;font-size:12px;cursor:pointer;
+    border:1px solid var(--sep);background:transparent;color:var(--primary-text-color)}
+  .puces button i{font-style:normal;color:var(--secondary-text-color);margin-left:4px;font-variant-numeric:tabular-nums}
+  .puces button.actif{border-color:var(--acc);color:var(--acc)}
+  .actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+  .actions .espace{flex:1}
+  .mini.primaire{background:var(--acc);border-color:var(--acc);color:#fff}
+  .mini.primaire:hover{color:#fff;filter:brightness(1.1)}
+  .mini:disabled{opacity:.45;cursor:default}
+  .import{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .import textarea{font:inherit;font-size:12.5px;padding:8px;border-radius:9px;resize:vertical;
+    background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--sep)}
+  .import button{align-self:flex-end}
+  .aide{margin:0 0 8px;font-size:12px;line-height:1.5;color:var(--secondary-text-color)}
+  .choix{list-style:none;margin:0;padding:0;max-height:52vh;overflow-y:auto;
+    border:1px solid var(--sep);border-radius:10px}
+  .choix li + li{border-top:1px solid var(--sep)}
+  .choix label{display:flex;align-items:center;gap:10px;padding:7px 10px;cursor:pointer;font-size:13px}
+  .choix input{accent-color:var(--acc);width:16px;height:16px;flex:none}
+  .choix .nm{flex:1;color:var(--primary-text-color);font-size:13px}
+  .choix code{color:var(--secondary-text-color);font-size:11.5px}
+  .notif{margin-left:6px;color:var(--acc);font-size:12px}
 
   .reglages{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
   .reglages.off,.col.off,.curseur.off,.txt.off,.segments.off{display:none}
@@ -1165,4 +1301,4 @@ if(!window.customCards.some(c => c.type === 'wled-anim-card')) window.customCard
   preview: true
 });
 
-console.info('%c WLED-ANIM-CARD %c 1.5.0 ', 'background:#ff4d2e;color:#fff', 'background:#333;color:#fff');
+console.info('%c WLED-ANIM-CARD %c 1.6.0 ', 'background:#ff4d2e;color:#fff', 'background:#333;color:#fff');

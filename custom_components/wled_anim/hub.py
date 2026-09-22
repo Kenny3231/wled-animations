@@ -57,8 +57,19 @@ class WledAnimHub:
     async def set_state(self, panel_id: str, **fields: Any) -> dict:
         return await self._request("POST", f"/api/panel/{panel_id}", fields)
 
-    async def flash(self, panel_id: str, animation: str, seconds: int = 10) -> dict:
-        return await self._request(
-            "POST", f"/api/panel/{panel_id}/flash",
-            {"animation": animation, "seconds": seconds},
-        )
+    async def flash(self, panel_id: str, animation: str | None, *,
+                    seconds: float | None = None, text: str | None = None,
+                    mode: str = "file") -> dict:
+        """Met une notification en file d'attente. Sans duree, le hub joue
+        un cycle complet : le message defile en entier."""
+        corps: dict[str, Any] = {"mode": mode}
+        if animation:
+            corps["animation"] = animation
+        if seconds is not None:
+            corps["seconds"] = seconds
+        if text:
+            corps["text"] = text
+        return await self._request("POST", f"/api/panel/{panel_id}/flash", corps)
+
+    async def selection(self) -> dict:
+        return await self._request("GET", "/api/selection")

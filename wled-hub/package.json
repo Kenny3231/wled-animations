@@ -1,9 +1,13 @@
 {
   "name": "wled-animations-hub",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Diffusion UDP des animations WLED avec integration Home Assistant",
   "main": "hub.js",
   "private": true,
-  "engines": { "node": ">=16" },
-  "dependencies": { "mqtt": "^5.3.0" }
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {
+    "mqtt": "^5.3.0"
+  }
 }

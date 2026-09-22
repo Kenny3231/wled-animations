@@ -19,9 +19,14 @@ pour chaque panneau :
 | Entité | Rôle |
 |---|---|
 | `switch.<panneau>_alimentation` | démarre / arrête le flux |
-| `select.<panneau>_animation` | toutes les animations en liste déroulante |
+| `select.<panneau>_animation` | les animations **de ta sélection** en liste déroulante |
 | `number.<panneau>_luminosite` | 0 à 100 % |
 | `text.<panneau>_message` | texte de l'animation « Message libre » |
+| `text.<panneau>_composition_texte` / `_2` | les deux zones de texte de la composition |
+| `text.<panneau>_icones_lametric` | icônes LaMetric de la composition (« 1431,510 ») |
+| `select.<panneau>_position_icone` | gauche, centre ou droite |
+| `sensor.<panneau>_notification_en_cours` | la notification affichée, ou « Aucune » |
+| `sensor.<panneau>_notifications_en_attente` | combien attendent derrière |
 
 Ton widget devient une carte d'entités standard, et Node-RED garde la main
 via les mêmes topics MQTT ou l'API HTTP. Aucune animation n'est réécrite :
@@ -119,50 +124,75 @@ cards:
 
 ---
 
-## Ton scénario : la porte s'ouvre → bat-signal
+## Notifications et file d'attente
 
-C'est exactement ce à quoi sert la commande **flash** : elle joue une
-animation pendant N secondes **puis restaure ce qui tournait avant**, y
-compris l'état éteint. Rien à mémoriser dans l'automatisation.
+Une notification joue une animation **puis restaure ce qui tournait avant**,
+état éteint compris. Elles passent par une **file d'attente** : si la porte
+s'ouvre, puis la fenêtre pendant le message de la porte, les deux messages
+s'affichent l'un après l'autre, **chacun en entier**, avant le retour à
+l'affichage d'avant.
+
+- **Sans durée**, une notification dure un cycle complet de son animation :
+  le message défile en entier (10,2 s pour `porte`, 8,4 s pour
+  `fenetre`…). Une durée explicite reste possible.
+- La même notification déjà affichée ou en attente n'est pas ajoutée deux
+  fois : une porte ouverte trois fois de suite ne fait qu'un message.
+- `mode: maintenant` coupe la file et joue tout de suite (l'alarme, par
+  exemple) ; `mode: vider` efface la file et revient à l'affichage d'avant.
+- Changer l'animation ou éteindre à la main abandonne la file : ton choix
+  n'est pas écrasé par une restauration.
 
 ### En automatisation Home Assistant
 
+Le service `wled_anim.flash` est fourni par l'intégration :
+
 ```yaml
-alias: Bat-signal à l'ouverture de la porte
-trigger:
-  - platform: state
+alias: Porte d'entrée ouverte
+triggers:
+  - trigger: state
     entity_id: binary_sensor.porte_entree
     to: "on"
-action:
-  - service: mqtt.publish
+actions:
+  - action: wled_anim.flash
     data:
-      topic: wledhub/panel01/flash
-      payload: '{"animation":"batsignal","seconds":12}'
-mode: single
+      panel: panel_bureau
+      animation: porte          # un cycle complet : le message défile en entier
+mode: queued
 ```
 
-Variante avec message personnalisé :
+Un message libre, le temps de la notification :
 
 ```yaml
-  - service: mqtt.publish
+  - action: wled_anim.flash
     data:
-      topic: wledhub/panel01/set/text
-      payload: "BIENVENUE DAVID"
-  - service: mqtt.publish
-    data:
-      topic: wledhub/panel01/flash
-      payload: '{"animation":"message","seconds":15}'
+      panel: panel_bureau
+      animation: message
+      text: Le linge est sec
 ```
+
+Sans l'intégration, le même geste passe par MQTT :
+`wledhub/panel_bureau/flash` avec `{"animation":"porte"}`.
 
 ### En Node-RED
 
-Deux nœuds : un déclencheur, puis un `mqtt out` sur
-`wledhub/panel01/flash` avec pour charge utile
-`{"animation":"batsignal","seconds":12}`.
+Un `mqtt out` sur `wledhub/<panneau>/flash` avec pour charge utile
+`{"animation":"porte"}`. Le flow `nodered-flow.json` fourni est importable
+directement (menu ⋮ → Importer).
 
-Le flow `nodered-flow.json` fourni est importable directement
-(menu ⋮ → Importer) : scénario de porte, sélecteur d'animation et exemple de
-message.
+---
+
+## Choisir ses animations
+
+Le catalogue compte plus de 240 animations ; chacun garde celles qu'il veut
+voir. Dans la carte Lovelace, onglet **Sélection** : coche ou décoche, par
+catégorie entière ou une à une, puis **Enregistrer**. Sur le site, coche les
+animations voulues, **Copier les identifiants**, puis dans la carte
+**Importer une liste**.
+
+La sélection ne filtre que les **listes** (le sélecteur MQTT et l'onglet
+Animations de la carte). Une automatisation peut toujours jouer n'importe
+quelle animation par son identifiant. Elle est gardée dans `/data` et
+survit aux mises à jour de l'add-on.
 
 ---
 
@@ -176,7 +206,7 @@ message.
 | `wledhub/<id>/set/animation` | nom ou identifiant | change l'animation |
 | `wledhub/<id>/set/brightness` | `0` à `100` | luminosité |
 | `wledhub/<id>/set/text` | texte libre | message défilant |
-| `wledhub/<id>/flash` | `{"animation":"...","seconds":12}` | joue puis restaure |
+| `wledhub/<id>/flash` | `{"animation":"porte"}` + `seconds`, `text`, `mode` facultatifs | notification en file d'attente |
 | `wledhub/<id>/state` | *(lecture)* | état JSON, retenu |
 | `wledhub/status` | *(lecture)* | `online` / `offline` |
 

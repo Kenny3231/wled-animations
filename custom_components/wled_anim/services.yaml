@@ -1,28 +1,52 @@
 flash:
-  name: Animation temporaire
+  name: Notification
   description: >-
-    Joue une animation pendant N secondes puis restaure ce qui tournait
-    avant, etat eteint compris. Rien a memoriser dans l'automatisation.
+    Joue une animation puis restaure ce qui tournait avant, etat eteint
+    compris. Les notifications passent par une file d'attente : si la
+    porte puis la fenetre s'ouvrent, les deux messages s'affichent l'un
+    apres l'autre, chacun en entier.
   fields:
     panel:
       name: Panneau
-      description: Identifiant du panneau (ex. panneau_bureau)
+      description: Identifiant du panneau (ex. panel_bureau)
       required: true
+      example: panel_bureau
       selector:
         text:
     animation:
       name: Animation
-      description: Identifiant ou nom de l'animation (ex. batsignal)
-      required: true
-      example: batsignal
+      description: >-
+        Identifiant ou nom de l'animation (ex. porte, sonnette, message).
+        Inutile en mode vider.
+      example: porte
       selector:
         text:
     seconds:
       name: Duree
-      description: Duree en secondes avant retour a l'etat precedent
-      default: 10
+      description: >-
+        Laisser vide pour un cycle complet : le message defile alors en
+        entier. Sinon, duree en secondes.
       selector:
         number:
           min: 1
           max: 600
           unit_of_measurement: s
+    text:
+      name: Texte
+      description: Texte a afficher, pour l'animation message.
+      example: La porte est ouverte
+      selector:
+        text:
+    mode:
+      name: Mode
+      description: >-
+        file = a la suite des autres (defaut) ; maintenant = coupe la file
+        et joue tout de suite ; vider = efface la file et revient a
+        l'affichage d'avant.
+      default: file
+      selector:
+        select:
+          options:
+            - file
+            - maintenant
+            - vider

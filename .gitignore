@@ -22,3 +22,6 @@ preview/
 # Configuration du hub lance hors Home Assistant (voir wled-hub/README.md)
 wled-hub/config.json
 __pycache__/
+
+# Selection et configuration du hub lance hors Home Assistant
+wled-hub/selection.json

@@ -16,13 +16,14 @@ const ROOT = path.join(__dirname, '..');
 const SRC  = path.join(ROOT, 'packs', '32x8', 'wled-animations.js');
 const DST  = path.join(ROOT, 'wled-hub', 'wled-animations.js');
 
-const avant = fs.existsSync(DST) ? fs.readFileSync(DST) : null;
-const src   = fs.readFileSync(SRC);
-
-if(avant && avant.equals(src)){
-  console.log('  wled-hub/wled-animations.js deja a jour');
-} else {
-  fs.copyFileSync(SRC, DST);
-  console.log('  wled-hub/wled-animations.js mis a jour depuis packs/32x8/');
-  console.log('  Pense a redeployer l\'add-on pour que le hub en profite.');
+// Le moteur et le classement par categories voyagent ensemble.
+let change = false;
+for(const [src, dst] of [[SRC, DST],
+    [path.join(ROOT, 'packs', '32x8', 'categories.json'), path.join(ROOT, 'wled-hub', 'categories.json')]]){
+  const avant = fs.existsSync(dst) ? fs.readFileSync(dst) : null;
+  if(avant && avant.equals(fs.readFileSync(src))) continue;
+  fs.copyFileSync(src, dst); change = true;
+  console.log('  ' + path.relative(ROOT, dst) + ' mis a jour');
 }
+if(change) console.log('  Pense a monter la version de l\'add-on pour que le hub en profite.');
+else console.log('  wled-hub/ deja a jour');

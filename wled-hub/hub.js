@@ -12,10 +12,20 @@
      number.<panneau>_luminosite 0 a 100 %
      text.<panneau>_message      texte de l'animation « message »
 
-   Commande ponctuelle, sans entite (MQTT ou HTTP) :
-     wledhub/<panneau>/flash   {"animation":"batsignal","seconds":12}
+   Notifications, sans entite (MQTT ou HTTP) :
+     wledhub/<panneau>/flash   {"animation":"porte"}
        -> joue l'animation puis restaure l'etat precedent.
-          C'est ce qu'il faut pour « la porte s'ouvre -> bat-signal ».
+          C'est ce qu'il faut pour « la porte s'ouvre -> message ».
+     Elles passent par une FILE D'ATTENTE : la porte puis la fenetre
+     s'affichent l'une apres l'autre, chacune en entier.
+       seconds   absent = un cycle complet (le message defile en entier)
+       text      texte de l'animation « message », le temps de la notif
+       mode      file (defaut) | maintenant (coupe la file) | vider
+
+   Selection : les animations que l'on garde dans les listes.
+     GET  /api/selection            { tout, ids }
+     POST /api/selection            { ids:[...] } ou { tout:true }
+     Les automatisations peuvent toujours jouer n'importe quelle animation.
 
    API HTTP pour Node-RED, si tu preferes un noeud http request :
      GET  /api/panels
@@ -23,7 +33,8 @@
      GET  /api/icons?q=batman        recherche dans la galerie LaMetric
      GET  /api/icon/<id>             icone 8x8 decodee, images + alpha
      POST /api/panel/<id>        {animation, brightness, power, text}
-     POST /api/panel/<id>/flash  {animation, seconds}
+     POST /api/panel/<id>/flash  {animation, seconds?, text?, mode?}
+     GET  /api/catalog?w=32&h=8      animations + categories + selection
 
    Composition (animation `compose`), sur le meme POST /api/panel/<id> :
      {compose_text, text2, icons, icon_side, bg_mode, bg, bg_to, bg_axis,
@@ -151,8 +162,10 @@ class Panel {
     delete this.compose.iconId;
     this.icones = [];                   // images decodees, resolues a part
     this.inst  = null;
-    this.flashBack  = null;   // etat a restaurer apres un flash
+    this.flashBack  = null;   // etat a restaurer quand la file est vide
     this.flashUntil = 0;
+    this.file       = [];     // notifications en attente
+    this.flashEnCours = null;
     this.blanked    = false;
     this.load(this.animation);
   }
@@ -160,7 +173,6 @@ class Panel {
   opts(){
     if(this.animation === 'compose') return this.optsCompose();
     if(this.animation === 'message') return { text:this.text, speed:11 };
-    if(this.animation === 'max')     return { num:'33' };
     return {};
   }
 
@@ -225,23 +237,71 @@ class Panel {
     return true;
   }
 
-  /** Joue `id` pendant `seconds`, puis restaure l'etat precedent. */
-  flash(id, seconds){
-    if(!L.getAnim(id)) return false;
-    if(!this.flashBack)
-      this.flashBack = { animation:this.animation, power:this.power };
-    this.power = true;
-    this.load(id);
-    this.flashUntil = Date.now() + (seconds||10)*1000;
-    return true;
+  /**
+   * File d'attente des notifications. Chaque demande joue une animation,
+   * puis la suivante ; quand la file est vide, l'etat d'avant la premiere
+   * notification revient. La porte puis la fenetre s'affichent donc l'une
+   * apres l'autre, chacune en entier, au lieu de s'ecraser.
+   *   req = { animation, seconds?, text?, mode? }
+   * Renvoie null si l'animation est inconnue.
+   */
+  flash(req){
+    if(req.mode === 'vider'){
+      this.file = [];
+      if(this.flashEnCours) this.suivant();
+      return { en_cours:null, attente:0 };
+    }
+    const id = req.animation;
+    if(!L.getAnim(id)) return null;
+    const text = req.text != null && req.text !== '' ? String(req.text) : null;
+    const item = { animation:id, text, seconds:dureeFlash(id, req.seconds, text || this.text) };
+    const cle = x => x.animation + '|' + (x.text || '');
+    if(req.mode === 'maintenant' || req.mode === 'now'){
+      this.file = [item];
+      this.suivant();
+    } else {
+      // La meme notification deja affichee ou en attente n'est pas doublee :
+      // une porte ouverte deux fois de suite ne fait qu'un message.
+      const doublon = (this.flashEnCours && cle(this.flashEnCours) === cle(item))
+                   || this.file.some(x => cle(x) === cle(item));
+      if(!doublon) this.file.push(item);
+      if(!this.flashEnCours) this.suivant();
+    }
+    return { en_cours:this.flashEnCours && this.flashEnCours.animation, attente:this.file.length };
   }
 
-  tick(dt){
-    if(this.flashUntil && Date.now() > this.flashUntil){
+  /** Notification suivante, ou retour a l'etat d'avant la file. */
+  suivant(){
+    const item = this.file.shift();
+    if(!item){
       const b = this.flashBack;
-      this.flashUntil = 0; this.flashBack = null;
-      if(b){ this.power = b.power; this.load(b.animation); }
+      this.flashBack = null; this.flashEnCours = null; this.flashUntil = 0;
+      if(b){ this.power = b.power; this.text = b.text; this.load(b.animation); }
+      publishState(this);
+      return;
     }
+    if(!this.flashBack)
+      this.flashBack = { animation:this.animation, power:this.power, text:this.text };
+    this.flashEnCours = item;
+    this.power = true;
+    if(item.text != null) this.text = item.text;
+    this.load(item.animation);
+    this.flashUntil = Date.now() + item.seconds*1000;
+    publishState(this);
+  }
+
+  /** Une commande manuelle l'emporte : la file est abandonnee, et ce que
+      l'utilisateur vient de choisir ne sera pas ecrase par une restauration. */
+  annulerFile(){
+    this.file = []; this.flashBack = null; this.flashEnCours = null; this.flashUntil = 0;
+  }
+
+  /** L'animation « de fond », hors notification : c'est elle qu'affiche le
+      select de Home Assistant, pour qu'il ne clignote pas a chaque flash. */
+  get animationFond(){ return this.flashBack ? this.flashBack.animation : this.animation; }
+
+  tick(dt){
+    if(this.flashUntil && Date.now() > this.flashUntil) this.suivant();
     if(!this.power){
       // une seule trame noire, puis on laisse WLED reprendre son effet
       if(!this.blanked){ this.frame.fill(0); this.flush(); this.blanked = true; }
@@ -287,9 +347,70 @@ class Panel {
       // son selecteur plutot que de laisser croire a une panne.
       icon_supported: this.height === 8,
       icon_max: 3,
-      compose: Object.assign({}, this.compose)
+      compose: Object.assign({}, this.compose),
+      flash: this.flashEnCours ? this.flashEnCours.animation : null,
+      file: this.file.length
     };
   }
+}
+
+/* Duree d'une notification : celle demandee, sinon UN CYCLE COMPLET de
+   l'animation. C'est ce qui garantit qu'un message defile en entier au
+   lieu d'etre coupe au milieu par un delai fixe. */
+function dureeFlash(id, seconds, text){
+  const s = parseFloat(seconds);
+  if(Number.isFinite(s) && s > 0) return Math.min(600, Math.max(1, s));
+  if(id === 'message'){
+    const txt = ((text || 'HELLO') + '   ').toUpperCase();
+    return Math.min(600, L.scrollTime(txt, 0, L.W - 1, 11));
+  }
+  const a = L.getAnim(id);
+  if(a.clip && a.clip.seconds) return a.clip.seconds;
+  const m = /(\d+(?:[.,]\d+)?)\s*s/.exec(a.speed || '');
+  return m ? Math.min(60, parseFloat(m[1].replace(',', '.'))) : 10;
+}
+
+/* ═══ CATEGORIES ═══════════════════════════════════════════════════════
+   Copiees depuis packs/32x8/categories.json par `npm run sync-hub`. La
+   carte s'en sert pour cocher une categorie entiere d'un coup. */
+let CATEGORIES = [];
+try {
+  CATEGORIES = JSON.parse(fs.readFileSync(path.join(__dirname,'categories.json'),'utf8')).categories;
+} catch(e){ console.warn('[hub] categories.json absent : catalogue sans categories'); }
+const CAT_OF = {};
+for(const c of CATEGORIES) for(const id of c.animations) CAT_OF[id] = c.id;
+
+/* ═══ SELECTION ════════════════════════════════════════════════════════
+   Le site propose des centaines d'animations ; chacun garde celles qu'il
+   veut voir. La selection ne filtre que les LISTES (select MQTT, carte) :
+   une automatisation peut toujours jouer n'importe quelle animation par
+   son identifiant. Pas de fichier = tout le catalogue. */
+const SEL_FILE = fs.existsSync('/data') ? '/data/selection.json'
+                                        : path.join(__dirname,'selection.json');
+let SELECTION = null;
+try {
+  const j = JSON.parse(fs.readFileSync(SEL_FILE,'utf8'));
+  if(Array.isArray(j.ids)) SELECTION = new Set(j.ids.filter(id => L.getAnim(id)));
+} catch(e){ /* pas de selection : tout le catalogue */ }
+const estChoisie = id => !SELECTION || SELECTION.has(id);
+const animsChoisies = () => L.ANIMS.filter(a => estChoisie(a.id));
+
+/** ids = null pour revenir a tout le catalogue. Renvoie un message
+    d'erreur, ou null si c'est enregistre. */
+function enregistrerSelection(ids){
+  if(ids == null){
+    SELECTION = null;
+    try { fs.unlinkSync(SEL_FILE); } catch(e){}
+  } else {
+    const valides = [...new Set(ids.map(String))].filter(id => L.getAnim(id));
+    if(!valides.length) return 'il faut garder au moins une animation';
+    SELECTION = new Set(valides);
+    fs.writeFileSync(SEL_FILE, JSON.stringify({ ids:valides }, null, 2));
+  }
+  console.log('[hub] selection : %s', SELECTION ? SELECTION.size + ' animation(s)' : 'tout le catalogue');
+  // La liste du select MQTT change : on republie la decouverte.
+  if(mq) for(const p of panels){ discovery(p); publishState(p); }
+  return null;
 }
 
 /* ═══ CATALOGUE PAR GEOMETRIE ═════════════════════════════════════════
@@ -367,7 +488,6 @@ setInterval(() => {
 
 /* ═══ MQTT + DECOUVERTE HOME ASSISTANT ════════════════════════════════ */
 let mq = null;
-const OPTIONS = L.ANIMS.map(a => a.name);          // libelles lisibles cote HA
 const BY_NAME = {}; L.ANIMS.forEach(a => BY_NAME[a.name]=a.id);
 const BY_ID   = {}; L.ANIMS.forEach(a => BY_ID[a.id]=a.name);
 
@@ -376,10 +496,15 @@ const availTopic = () => `${BASE}/status`;
 
 function publishState(p){
   if(!mq) return;
+  // Le select refuse une valeur absente de ses options : si l'animation de
+  // fond n'est pas dans la selection, on republie la liste qui l'inclut.
+  if(p.optionsPubliees && !p.optionsPubliees.has(p.animationFond)) discovery(p);
   const s = p.state();
   mq.publish(stateTopic(p), JSON.stringify({
     power: s.power ? 'ON' : 'OFF',
-    animation: BY_ID[s.animation] || s.animation,
+    animation: BY_ID[p.animationFond] || p.animationFond,
+    notification: s.flash ? (BY_ID[s.flash] || s.flash) : 'Aucune',
+    file: s.file,
     brightness: s.brightness,
     text: s.text,
     compose_text: s.compose.text,
@@ -411,11 +536,25 @@ function discovery(p){
     value_template:'{{ value_json.power }}',
     payload_on:'ON', payload_off:'OFF', icon:'mdi:led-strip-variant' }));
 
+  // Seulement la selection, plus l'animation en cours si elle n'en fait
+  // pas partie (sinon le select passerait en « inconnu »).
+  const ids = animsChoisies().map(a => a.id);
+  if(!ids.includes(p.animationFond) && L.getAnim(p.animationFond)) ids.push(p.animationFond);
+  p.optionsPubliees = new Set(ids);
   send('select','animation', Object.assign({}, common, {
     name:'Animation', unique_id:`wledhub_${p.id}_anim`,
     command_topic:`${BASE}/${p.id}/set/animation`,
     value_template:'{{ value_json.animation }}',
-    options: OPTIONS, icon:'mdi:animation-play' }));
+    options: ids.map(id => BY_ID[id]), icon:'mdi:animation-play' }));
+
+  // La file d'attente, visible dans Home Assistant.
+  send('sensor','notification', Object.assign({}, common, {
+    name:'Notification en cours', unique_id:`wledhub_${p.id}_notif`,
+    value_template:'{{ value_json.notification }}', icon:'mdi:bell-ring' }));
+  send('sensor','file', Object.assign({}, common, {
+    name:'Notifications en attente', unique_id:`wledhub_${p.id}_file`,
+    value_template:'{{ value_json.file }}', icon:'mdi:tray-full',
+    state_class:'measurement' }));
 
   send('number','brightness', Object.assign({}, common, {
     name:'Luminosite', unique_id:`wledhub_${p.id}_bri`,
@@ -463,9 +602,9 @@ function handleCommand(panelId, field, payload){
   if(!p) return;
   const v = payload.toString().trim();
   switch(field){
-    case 'power':      p.power = (v.toUpperCase()==='ON'); break;
+    case 'power':      p.annulerFile(); p.power = (v.toUpperCase()==='ON'); break;
     case 'brightness': p.brightness = Math.max(0,Math.min(100,parseFloat(v)||0)); break;
-    case 'animation':  p.load(BY_NAME[v] || v); break;
+    case 'animation':  p.annulerFile(); p.load(BY_NAME[v] || v); break;
     case 'text':       p.text = v; if(p.animation==='message') p.load('message'); break;
     case 'compose_text':  p.majCompose({ text:v });  break;
     case 'compose_text2': p.majCompose({ text2:v }); break;
@@ -480,8 +619,9 @@ function handleCommand(panelId, field, payload){
       break;
     case 'flash': {
       let j; try { j = JSON.parse(v); } catch(e){ j = { animation:v }; }
-      p.flash(BY_NAME[j.animation] || j.animation, j.seconds);
-      break;
+      if(typeof j !== 'object' || j === null) j = { animation:String(v) };
+      p.flash(Object.assign({}, j, { animation: BY_NAME[j.animation] || j.animation }));
+      return;   // flash publie lui-meme l'etat
     }
     default: return;
   }
@@ -560,13 +700,38 @@ http.createServer((req,res) => {
       {id:p.id,name:p.name,width:p.width,height:p.height}, p.state())));
 
   if(req.method==='GET' && url==='/api/animations')
-    return json(200, L.ANIMS.map(a => ({id:a.id,name:a.name,tag:a.tag})));
+    return json(200, L.ANIMS.map(a => ({id:a.id,name:a.name,tag:a.tag,selected:estChoisie(a.id)})));
+
+  if(req.method==='GET' && url==='/api/selection')
+    return json(200, { tout: !SELECTION, ids: animsChoisies().map(a => a.id), total: L.ANIMS.length });
+
+  if(req.method==='POST' && url==='/api/selection'){
+    let body='';
+    req.on('data',c=>body+=c);
+    req.on('end',()=>{
+      let j; try{ j=JSON.parse(body||'{}'); }
+      catch(e){ return json(400,{error:'JSON invalide'}); }
+      if(!j.tout && !Array.isArray(j.ids)) return json(400,{error:'ids (liste) ou tout:true attendu'});
+      let err;
+      try { err = enregistrerSelection(j.tout ? null : j.ids); }
+      catch(e){ return json(500,{error:e.message}); }
+      if(err) return json(400,{error:err});
+      json(200, { tout: !SELECTION, ids: animsChoisies().map(a => a.id), total: L.ANIMS.length });
+    });
+    return;
+  }
 
   // Catalogue filtre par geometrie : ?w=32&h=8
   if(req.method==='GET' && url==='/api/catalog'){
     const q = new URLSearchParams(req.url.split('?')[1]||'');
     const w = parseInt(q.get('w'),10)||L.W, h = parseInt(q.get('h'),10)||L.H;
-    return json(200, { geometry:`${w}x${h}`, animations: catalogFor(w,h) });
+    return json(200, {
+      geometry:`${w}x${h}`,
+      animations: catalogFor(w,h).map(a => Object.assign({}, a,
+        { category: CAT_OF[a.id] || null, selected: estChoisie(a.id) })),
+      categories: CATEGORIES.map(c => ({ id:c.id, name:c.name })),
+      selection_active: !!SELECTION
+    });
   }
 
   // Le moteur, servi a la carte Lovelace pour animer ses apercus.
@@ -672,9 +837,11 @@ http.createServer((req,res) => {
       let j; try{ j=JSON.parse(body||'{}'); }
       catch(e){ return json(400,{error:'JSON invalide'}); }
       if(m[2]){
-        if(!p.flash(BY_NAME[j.animation]||j.animation, j.seconds))
-          return json(400,{error:'animation inconnue'});
+        const r = p.flash(Object.assign({}, j, { animation: BY_NAME[j.animation]||j.animation }));
+        if(!r) return json(400,{error:'animation inconnue'});
+        return json(200, Object.assign(p.state(), r));
       } else {
+        if(j.power!==undefined || j.animation!==undefined) p.annulerFile();
         if(j.power!==undefined)      p.power = !!j.power;
         if(j.brightness!==undefined) p.brightness = Math.max(0,Math.min(100,+j.brightness));
         if(j.text!==undefined)       p.text = String(j.text);

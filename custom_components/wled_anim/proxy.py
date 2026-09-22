@@ -48,6 +48,7 @@ CHEMINS_AUTORISES = re.compile(
     r"|engine\.js"
     r"|icons"
     r"|icon/\d+"
+    r"|selection"
     r"|panel/[A-Za-z0-9_-]+(/flash)?"
     r")$"
 )

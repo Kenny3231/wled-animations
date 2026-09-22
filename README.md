@@ -72,6 +72,14 @@ déclarer dans les ressources Lovelace, il suffit d'ajouter une carte
 `custom:wled-anim-card`. L'adresse du hub à donner est
 `http://<IP de Home Assistant>:8099`.
 
+**Ensuite.** Toutes les entités (alimentation, animation, luminosité, message,
+composition, icônes, notification en cours, file d'attente) viennent de
+l'add-on par MQTT. L'intégration apporte le service `wled_anim.flash` : des
+notifications qui passent en **file d'attente**, chacune jouée en entier.
+Dans la carte, l'onglet **Sélection** choisit les animations qui
+apparaissent dans les listes ; une liste copiée sur ce site s'y importe.
+Détails dans le [README de l'add-on](wled-hub/README.md).
+
 **Si tu l'avais installée à la main avant**, retire la ressource
 `/local/wled-anim-card.js` et le fichier `www/wled-anim-card.js` : ils
 feraient doublon (sans casser la carte, qui se protège d'un double
