@@ -24,14 +24,16 @@ class HubError(Exception):
 class WledAnimHub:
     """Enveloppe minimale autour de l'API HTTP du hub."""
 
-    def __init__(self, session: aiohttp.ClientSession, base_url: str) -> None:
+    def __init__(self, session: aiohttp.ClientSession, base_url: str,
+                 timeout: float = TIMEOUT) -> None:
         self._session = session
         self._base = base_url.rstrip("/")
+        self._timeout = timeout
 
     async def _request(self, method: str, path: str, payload: dict | None = None) -> Any:
         url = f"{self._base}{path}"
         try:
-            async with async_timeout.timeout(TIMEOUT):
+            async with async_timeout.timeout(self._timeout):
                 async with self._session.request(method, url, json=payload) as resp:
                     if resp.status >= 400:
                         raise HubError(f"{method} {path} -> HTTP {resp.status}")

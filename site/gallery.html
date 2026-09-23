@@ -58,6 +58,34 @@ button.cat{flex:none;padding:6px 11px;border-radius:999px;font-size:12.5px;font-
 button.cat i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:6px}
 button.cat.on{background:rgba(255,77,46,.16);border-color:var(--accent);color:#fff}
 button.cat.on i{color:#ffb8aa}
+/* fleches : n'apparaissent que s'il reste des categories a voir de ce cote */
+.cats-wrap{position:relative;min-width:0}
+.cats-fade{position:absolute;top:0;bottom:2px;width:52px;z-index:2;display:flex;align-items:center;
+  opacity:0;pointer-events:none;transition:opacity .15s}
+.cats-fade.on{opacity:1}
+.cats-fade.prev{left:0;justify-content:flex-start;background:linear-gradient(90deg,#08090c 50%,rgba(8,9,12,0))}
+.cats-fade.next{right:0;justify-content:flex-end;background:linear-gradient(270deg,#08090c 50%,rgba(8,9,12,0))}
+.cats-fade button{width:30px;height:30px;padding:0;border-radius:999px;font-size:18px;line-height:1;
+  display:grid;place-items:center;background:var(--surface2);border-color:var(--line2)}
+.cats-fade.on button{pointer-events:auto}
+
+/* ligne de selection : ce que « tout » vise, et l'export / import */
+.selrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.selrow button{padding:5px 10px;font-size:12px}
+.selrow b{color:var(--txt)}
+.selrow .scope{margin-right:4px}
+.selrow .grow{flex:1}
+button.danger{background:#2a1210;border-color:#6b2419;color:#ffb8aa}
+button.danger:hover{background:#3a1512;border-color:#a3321f}
+body:not(.gestion) .g-only{display:none!important}
+.opt-check{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:var(--txt);cursor:pointer;line-height:1.4}
+.opt-check input{margin-top:2px;accent-color:var(--accent)}
+.opts-panel .note{font-size:12px;color:var(--muted);line-height:1.5}
+.opts-panel a,.m-note a{color:var(--info)}
+a.bouton{display:inline-block;font-size:12px;font-weight:600;padding:6px 10px;border-radius:9px;text-decoration:none;
+  background:var(--accent-ink);border:1px solid var(--accent-ink);color:#fff;white-space:nowrap}
+a.bouton:hover{background:#c73418;border-color:#c73418}
+a.bouton:focus-visible{outline:2px solid var(--info);outline-offset:2px}
 
 details.opts{position:relative;flex:none}
 details.opts summary{list-style:none;cursor:pointer;font-size:13px;font-weight:600;background:var(--surface2);
@@ -134,6 +162,7 @@ button.done{color:var(--ok)!important;border-color:#2a5f43!important}
 .modal{position:fixed;inset:0;z-index:100;background:rgba(4,5,8,.86);backdrop-filter:blur(8px);
   display:none;align-items:center;justify-content:center;padding:16px}
 .modal.on{display:flex}
+.modal-box.small{max-width:580px}
 .modal-box{background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:16px;
   max-width:880px;width:100%;max-height:calc(100vh - 32px);overflow:auto}
 .m-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
@@ -141,6 +170,15 @@ button.done{color:var(--ok)!important;border-color:#2a5f43!important}
 .m-sub{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:5px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
 .m-sub code{color:#c9cedb;background:var(--surface2);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
 .close{padding:6px 10px;flex:none}
+.m-note{font-size:13px;color:var(--muted);line-height:1.55;margin-top:4px}
+.m-note b{color:var(--txt)}
+ol.steps{margin:10px 0 0 20px;font-size:13px;color:#c9cedb;line-height:1.7}
+textarea{width:100%;margin-top:10px;background:#05060a;color:var(--txt);border:1px solid var(--line);border-radius:8px;
+  padding:10px;font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical}
+textarea:focus{outline:none;border-color:var(--accent)}
+input[type=file]{margin-top:10px;font-size:12.5px;color:var(--muted);max-width:100%}
+input[type=file]::file-selector-button{font:inherit;font-weight:600;background:var(--surface2);color:var(--txt);
+  border:1px solid var(--line);border-radius:8px;padding:6px 11px;margin-right:10px;cursor:pointer}
 details.code{margin-top:12px}
 details.code summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
 pre{margin-top:8px;background:#05060a;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;
@@ -163,6 +201,7 @@ footer.site code{font-family:var(--mono);font-size:11.5px}
   .meta{flex-direction:column;align-items:flex-start;gap:1px;padding:6px 2px 0}
   .name{font-size:12.5px;max-width:100%}
   .seg button{padding:8px 9px}
+  .selrow .scope,.selrow .macount{display:none}
   details.opts summary{padding:8px 10px}
   .modal{padding:8px}
 }
@@ -199,12 +238,27 @@ footer.site code{font-family:var(--mono);font-size:11.5px}
           <label class="opt">Taille<select id="exScale"><option value="1">32 × 8 — natif</option><option value="2">64 × 16 — dalle 16×64</option><option value="3">96 × 24</option></select><span></span></label>
           <label class="opt">Cadence<select id="exFps"><option value="20">20 fps</option><option value="25" selected>25 fps</option><option value="50">50 fps</option></select><span></span></label>
           <label class="opt">Palette<select id="exColors"><option value="64">64 couleurs</option><option value="128" selected>128 couleurs</option><option value="256">256 couleurs</option></select><span></span></label>
-          <h2>Sélection</h2>
-          <div class="row"><button id="allBtn">Tout ce qui est affiché</button><button id="noneBtn">Tout effacer</button></div>
+          <h2>Gestion du catalogue</h2>
+          <label class="opt-check"><input type="checkbox" id="gestionChk"><span>Mode gestion : ajoute « Retirer du site » à la sélection et aux fiches</span></label>
+          <p class="note">Réservé au propriétaire du dépôt : la liste des animations retirées se modifie
+            <a href="@@DEPOT@@/edit/main/packs/32x8/retirees.txt" target="_blank" rel="noopener">sur GitHub</a>.
+            Pour remettre une animation, efface sa ligne.</p>
         </div>
       </details>
     </div>
-    <div class="cats" id="cats" role="group" aria-label="Catégories"></div>
+    <div class="cats-wrap">
+      <div class="cats-fade prev" id="catPrev"><button tabindex="-1" aria-label="Catégories précédentes">‹</button></div>
+      <div class="cats" id="cats" role="group" aria-label="Catégories"></div>
+      <div class="cats-fade next" id="catNext"><button tabindex="-1" aria-label="Catégories suivantes">›</button></div>
+    </div>
+    <div class="selrow">
+      <span class="scope" id="scope"></span>
+      <button id="scopeBtn">Tout sélectionner</button>
+      <span class="grow"></span>
+      <span class="macount">Ma sélection : <b id="cnt2">0</b></span>
+      <button id="impBtn" title="Un fichier exporté depuis le site ou depuis Home Assistant, ou une liste collée">Importer</button>
+      <button id="expBtn" title="Télécharge un fichier à importer dans Home Assistant ou sur un autre navigateur">Exporter</button>
+    </div>
   </div>
 </div>
 
@@ -225,10 +279,43 @@ footer.site code{font-family:var(--mono);font-size:11.5px}
   <div class="dock-in">
     <div class="count"><b id="cnt">0</b> sélectionnée(s)</div>
     <button id="gifAllBtn">Télécharger les GIF</button>
-    <button class="primary" id="copyBtn" title="À coller dans la carte Home Assistant : onglet Sélection → Importer une liste">Copier les identifiants</button>
+    <button id="copyBtn" title="Un identifiant par ligne, à coller dans la carte Home Assistant : onglet Sélection → Importer">Copier les identifiants</button>
+    <button class="primary" id="expBtn2" title="Fichier à importer dans la carte Home Assistant : onglet Sélection → Importer">Exporter</button>
+    <button class="danger g-only" id="retBtn">Retirer du site</button>
   </div>
 </div>
 <div class="toast" id="exInfo" role="status" aria-live="polite"></div>
+
+<div class="modal" id="impModal" role="dialog" aria-modal="true" aria-labelledby="impTitle"><div class="modal-box small">
+  <div class="m-head">
+    <div><h2 id="impTitle">Importer une sélection</h2>
+      <p class="m-note">Un fichier exporté depuis ce site ou depuis la carte Home Assistant, ou une liste
+        d'identifiants collée (un par ligne, ou séparés par des virgules).</p></div>
+    <button class="close" id="impClose" aria-label="Fermer">✕</button>
+  </div>
+  <input type="file" id="impFile" accept=".json,.txt,application/json,text/plain" aria-label="Fichier de sélection">
+  <textarea id="impTxt" rows="7" placeholder="…ou colle la liste ici" aria-label="Liste à importer"></textarea>
+  <p class="m-note" id="impMsg" role="status"></p>
+  <div class="acts"><button id="impAdd" disabled>Ajouter à ma sélection</button><button class="primary" id="impRep" disabled>Remplacer ma sélection</button></div>
+</div></div>
+
+<div class="modal" id="retModal" role="dialog" aria-modal="true" aria-labelledby="retTitle"><div class="modal-box small">
+  <div class="m-head">
+    <div><h2 id="retTitle">Retirer du site</h2>
+      <p class="m-note">Les animations listées disparaissent du site, des GIF publiés et des listes de
+        Home Assistant. Leur code reste dans le dépôt : pour en remettre une, il suffit d'effacer sa ligne.</p></div>
+    <button class="close" id="retClose" aria-label="Fermer">✕</button>
+  </div>
+  <ol class="steps">
+    <li><b>Copie</b> la liste ci-dessous.</li>
+    <li><b>Ouvre</b> le fichier des animations retirées sur GitHub.</li>
+    <li>Colle à la fin du fichier, puis <b>Commit changes</b>.</li>
+  </ol>
+  <textarea id="retTxt" rows="6" readonly aria-label="Lignes à ajouter"></textarea>
+  <p class="m-note">Le site se republie tout seul en deux minutes environ ; Home Assistant suit dans les six heures.</p>
+  <div class="acts"><button id="retCopy">Copier la liste</button>
+    <a class="bouton" href="@@DEPOT@@/edit/main/packs/32x8/retirees.txt" target="_blank" rel="noopener">Ouvrir sur GitHub ↗</a></div>
+</div></div>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="modal-box">
   <div class="m-head">
@@ -451,8 +538,14 @@ const cellule=()=>dense?7:14;
 const CATEGORIES=/*@@CATEGORIES@@*/[];
 const CAT_OF={};
 CATEGORIES.forEach(c=>c.animations.forEach(id=>{ CAT_OF[id]=c; }));
-const ORDERED=[...CATEGORIES.flatMap(c=>c.animations).map(getAnim).filter(Boolean),
-               ...ANIMS.filter(a=>!CAT_OF[a.id])];
+/* Animations retirées (packs/32x8/retirees.txt) : leur code reste dans le
+   moteur, mais le site ne les montre plus. */
+const RETIREES=new Set(/*@@RETIREES@@*/[]);
+const actif=a=>!!a&&!RETIREES.has(a.id);
+const ORDERED=[...CATEGORIES.flatMap(c=>c.animations).map(getAnim).filter(actif),
+               ...ANIMS.filter(a=>!CAT_OF[a.id]&&actif(a))];
+const CATS=[{id:'all',name:'Toutes',ids:ORDERED.map(a=>a.id)},
+  ...CATEGORIES.map(c=>({id:c.id,name:c.name,ids:c.animations.filter(id=>actif(getAnim(id)))})).filter(c=>c.ids.length)];
 const norm=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -539,8 +632,12 @@ function basculer(inst,force){
 }
 function refreshDock(){
   $('cnt').textContent=selected.size;
+  $('cnt2').textContent=selected.size;
   $('dock').classList.toggle('on',selected.size>0);
+  $('expBtn').disabled=!selected.size;
+  if(!restauration){ ecrire('wled-selection',JSON.stringify([...selected])); majCats(); majPortee(); }
 }
+let restauration=false;
 
 /* ── boucle d'animation ──
    Les vignettes tournent à 30 images/s, la fiche ouverte à pleine cadence :
@@ -589,9 +686,6 @@ $('playBtn').onclick=e=>{
 };
 $('speed').oninput=e=>{ speed=e.target.value/100; $('speedV').textContent=speed.toFixed(1)+'×'; };
 $('bright').oninput=e=>{ bright=e.target.value/100; $('brightV').textContent=e.target.value+'%'; };
-// « Tout » veut dire tout ce qui est affiché : on respecte le filtre en cours.
-$('allBtn').onclick=()=>insts.forEach(i=>{ if(!i.card.classList.contains('hide')) basculer(i,true); });
-$('noneBtn').onclick=()=>insts.forEach(i=>basculer(i,false));
 document.addEventListener('click',e=>{ const d=$('opts'); if(d.open&&!d.contains(e.target)) d.open=false; });
 
 $('gifAllBtn').onclick=async e=>{
@@ -622,10 +716,36 @@ new MutationObserver(()=>{
 
 /* ── recherche + catégories ── */
 let curCat='all';
-$('cats').innerHTML=[{id:'all',name:'Toutes',n:ORDERED.length},
-    ...CATEGORIES.map(c=>({id:c.id,name:c.name,n:c.animations.length}))]
-  .map(c=>`<button class="cat${c.id==='all'?' on':''}" data-cat="${c.id}" aria-pressed="${c.id==='all'}">${esc(c.name)}<i>${c.n}</i></button>`)
+$('cats').innerHTML=CATS
+  .map(c=>`<button class="cat${c.id==='all'?' on':''}" data-cat="${c.id}" aria-pressed="${c.id==='all'}">${esc(c.name)}<i>${c.ids.length}</i></button>`)
   .join('');
+/* Avec une sélection en cours, chaque puce dit combien elle en contient :
+   « Iron Man 3/12 ». Sans sélection, juste le nombre d'animations. */
+function majCats(){
+  $('cats').querySelectorAll('button.cat').forEach(b=>{
+    const c=CATS.find(x=>x.id===b.dataset.cat); if(!c) return;
+    const n=c.ids.filter(id=>selected.has(id)).length;
+    b.querySelector('i').textContent=selected.size?n+'/'+c.ids.length:c.ids.length;
+  });
+}
+/* Flèches : visibles seulement s'il reste des catégories de ce côté. La
+   molette verticale fait aussi défiler la rangée, sur ordinateur. */
+const catsEl=$('cats');
+function majFleches(){
+  const max=catsEl.scrollWidth-catsEl.clientWidth;
+  $('catPrev').classList.toggle('on',catsEl.scrollLeft>4);
+  $('catNext').classList.toggle('on',catsEl.scrollLeft<max-4);
+}
+const defiler=sens=>catsEl.scrollBy({left:sens*Math.max(160,catsEl.clientWidth*.75),behavior:'smooth'});
+$('catPrev').querySelector('button').onclick=()=>defiler(-1);
+$('catNext').querySelector('button').onclick=()=>defiler(1);
+catsEl.addEventListener('scroll',majFleches,{passive:true});
+window.addEventListener('resize',majFleches);
+catsEl.addEventListener('wheel',e=>{
+  if(Math.abs(e.deltaY)<=Math.abs(e.deltaX)||catsEl.scrollWidth<=catsEl.clientWidth) return;
+  e.preventDefault(); catsEl.scrollLeft+=e.deltaY;
+},{passive:false});
+majFleches();
 $('cats').addEventListener('click',e=>{
   const b=e.target.closest('button.cat'); if(!b) return;
   curCat=b.dataset.cat;
@@ -646,8 +766,122 @@ function applyFilter(){
     if(ok) shown++;
   }
   $('empty').classList.toggle('on',shown===0);
+  majPortee();
 }
-$('total').textContent=ANIMS.length;
+$('total').textContent=ORDERED.length;
+
+/* ── « Tout sélectionner » vise ce qui est affiché : une catégorie entière
+   quand une puce est choisie, le résultat de la recherche sinon. ── */
+const affichees=()=>insts.filter(i=>!i.card.classList.contains('hide'));
+function majPortee(){
+  const vis=affichees(), n=vis.length, cat=CATS.find(c=>c.id===curCat);
+  const cherche=$('q').value.trim();
+  $('scope').innerHTML=cherche?`Résultats <b>${n}</b>`
+    :curCat==='all'?`Toutes les animations <b>${n}</b>`:`${esc(cat?cat.name:'')} <b>${n}</b>`;
+  // Un seul bouton, comme une case « tout cocher » : il décoche quand tout
+  // ce qui est affiché est déjà coché.
+  const tous=n>0&&vis.every(i=>selected.has(i.a.id));
+  const b=$('scopeBtn');
+  b.textContent=tous?'Tout désélectionner':'Tout sélectionner';
+  b.disabled=!n;
+  b.dataset.tous=tous?'1':'';
+}
+$('scopeBtn').onclick=e=>{ const tous=!!e.currentTarget.dataset.tous; affichees().forEach(i=>basculer(i,!tous)); };
+
+/* ── export / import de la sélection ──
+   Même format que la carte Home Assistant : un fichier exporté ici
+   s'importe là-bas, et inversement. L'import accepte aussi une simple
+   liste d'identifiants. */
+const FORMAT_SEL='wled-animations/selection';
+function exporter(){
+  if(!selected.size) return;
+  const corps={format:FORMAT_SEL,version:1,geometrie:W+'x'+H,source:'site',
+    exporte_le:new Date().toISOString(),
+    animations:ORDERED.filter(a=>selected.has(a.id)).map(a=>a.id)};
+  const nom='selection-wled-'+W+'x'+H+'.json';
+  downloadBlob(new Blob([JSON.stringify(corps,null,2)+'\n'],{type:'application/json'}),nom);
+  toast.textContent=corps.animations.length+' animation(s) exportée(s) : '+nom;
+}
+$('expBtn').onclick=exporter;
+$('expBtn2').onclick=exporter;
+
+function lireIds(texte){
+  let brut=null;
+  try{
+    const j=JSON.parse(texte);
+    brut=Array.isArray(j)?j:j&&Array.isArray(j.animations)?j.animations:j&&Array.isArray(j.ids)?j.ids:null;
+  }catch(e){ /* pas du JSON : une liste */ }
+  if(!brut) brut=String(texte||'').replace(/#.*$/gm,'').match(/[a-z0-9_-]+/gi)||[];
+  const connus=new Set(ORDERED.map(a=>a.id)), vus=new Set(), ok=[], ignores=[];
+  for(const x of brut){
+    const id=String(x).trim().toLowerCase();
+    if(!id||vus.has(id)) continue; vus.add(id);
+    (connus.has(id)?ok:ignores).push(id);
+  }
+  return {ok,ignores};
+}
+let aImporter=[];
+function analyserImport(){
+  const r=lireIds($('impTxt').value);
+  aImporter=r.ok;
+  $('impMsg').textContent=!$('impTxt').value.trim()?''
+    :r.ok.length+' animation(s) reconnue(s)'+(r.ignores.length?' · '+r.ignores.length+' ignorée(s) : inconnue(s) ou retirée(s) du site':'');
+  $('impAdd').disabled=$('impRep').disabled=!r.ok.length;
+}
+function ouvrirImport(){
+  $('impTxt').value=''; $('impFile').value=''; analyserImport();
+  ouvrirDialogue('impModal','impFile');
+}
+$('impBtn').onclick=ouvrirImport;
+$('impTxt').addEventListener('input',analyserImport);
+$('impFile').addEventListener('change',e=>{
+  const fic=e.target.files&&e.target.files[0]; if(!fic) return;
+  if(fic.size>1024*1024){ $('impMsg').textContent='Fichier trop gros pour une sélection (1 Mo au plus).'; return; }
+  fic.text().then(t=>{ $('impTxt').value=t; analyserImport(); });
+});
+function importer(remplacer){
+  const ids=new Set(aImporter);
+  insts.forEach(i=>{ if(ids.has(i.a.id)) basculer(i,true); else if(remplacer) basculer(i,false); });
+  fermerDialogues();
+  toast.textContent=ids.size+' animation(s) '+(remplacer?'importée(s)':'ajoutée(s)')+' · sélection : '+selected.size;
+}
+$('impAdd').onclick=()=>importer(false);
+$('impRep').onclick=()=>importer(true);
+
+/* ── mode gestion : retirer des animations du site ──
+   Le site est statique : rien ne peut s'y effacer depuis le navigateur.
+   On prépare donc les lignes à ajouter au fichier retirees.txt du dépôt,
+   et on ouvre ce fichier dans l'éditeur de GitHub. Le commit relance la
+   publication, sans rien d'autre à faire. */
+let gestion=lire('wled-gestion')==='1';
+function appliquerGestion(){ document.body.classList.toggle('gestion',gestion); $('gestionChk').checked=gestion; }
+$('gestionChk').onchange=e=>{ gestion=e.target.checked; ecrire('wled-gestion',gestion?'1':'0'); appliquerGestion(); };
+function ouvrirRetrait(ids){
+  const liste=ORDERED.filter(a=>ids.includes(a.id));
+  if(!liste.length) return;
+  const large=Math.max(...liste.map(a=>a.id.length))+2;
+  $('retTitle').textContent=liste.length>1?'Retirer '+liste.length+' animations du site':'Retirer « '+liste[0].name+' » du site';
+  $('retTxt').value=liste.map(a=>a.id.padEnd(large)+'# '+a.name).join('\n')+'\n';
+  ouvrirDialogue('retModal','retCopy');
+}
+$('retBtn').onclick=()=>ouvrirRetrait([...selected]);
+$('retCopy').onclick=e=>copyText($('retTxt').value,e.currentTarget,'Copier la liste');
+
+/* ── dialogues : import et retrait (la fiche a sa propre logique) ── */
+let dialogueRetour=null;
+function ouvrirDialogue(id,focus){
+  dialogueRetour=document.activeElement;
+  $(id).classList.add('on');
+  const el=$(focus); if(el) el.focus();
+}
+function fermerDialogues(){
+  let ouvert=false;
+  ['impModal','retModal'].forEach(id=>{ if($(id).classList.contains('on')){ ouvert=true; $(id).classList.remove('on'); } });
+  if(ouvert&&dialogueRetour&&dialogueRetour.focus) dialogueRetour.focus();
+}
+['impModal','retModal'].forEach(id=>$(id).addEventListener('click',e=>{ if(e.target.id===id) fermerDialogues(); }));
+$('impClose').onclick=fermerDialogues;
+$('retClose').onclick=fermerDialogues;
 
 /* ── fiche ── */
 let modalInst=null, modalBuf=newBuf(), modalSt={}, modalPanel=null, modalT=0, retourFocus=null;
@@ -659,10 +893,11 @@ function ouvrir(inst){
   $('mDesc').textContent=a.desc;
   $('mSpec').innerHTML=`<span><b>Effet</b> ${esc(a.fx)}</span><span><b>Durée</b> ${esc(a.speed)}</span>${swatches(a)}`;
   const acts=$('mActs');
-  acts.innerHTML=`${optSelect(a,inst)}<button class="yaml">YAML HA</button><button class="gif">Télécharger le GIF</button><button class="selb"></button>`;
+  acts.innerHTML=`${optSelect(a,inst)}<button class="yaml">YAML HA</button><button class="gif">Télécharger le GIF</button><button class="selb"></button><button class="danger g-only retb">Retirer du site</button>`;
   const y=acts.querySelector('.yaml'); y.onclick=()=>copyText(yamlFor(a),y,'YAML HA');
   const g=acts.querySelector('.gif'); g.onclick=()=>exportOne(inst,g).catch(()=>{});
   acts.querySelector('.selb').onclick=()=>basculer(inst);
+  acts.querySelector('.retb').onclick=()=>{ fermer(); ouvrirRetrait([a.id]); };
   const s=acts.querySelector('select[data-opt]');
   if(s) s.onchange=()=>{
     inst.opt[a.opt.key]=s.value;
@@ -687,9 +922,17 @@ function fermer(){
 }
 $('mClose').onclick=fermer;
 $('modal').addEventListener('click',e=>{ if(e.target.id==='modal') fermer(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') fermer(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ fermer(); fermerDialogues(); } });
 
 appliquerAffichage();
+appliquerGestion();
+/* La sélection est gardée dans ce navigateur d'une visite à l'autre. */
+try{
+  const garde=new Set(JSON.parse(lire('wled-selection')||'[]'));
+  restauration=true;
+  insts.forEach(i=>{ if(garde.has(i.a.id)) basculer(i,true); });
+}catch(e){ /* sélection illisible : on repart de zéro */ }
+restauration=false;
 refreshDock();
 </script>
 </body>

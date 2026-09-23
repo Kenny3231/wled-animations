@@ -69,15 +69,18 @@ Paramètres → Appareils et services → **Ajouter une intégration** →
 
 La carte est livrée avec l'intégration et chargée automatiquement : rien à
 déclarer dans les ressources Lovelace, il suffit d'ajouter une carte
-`custom:wled-anim-card`. L'adresse du hub à donner est
-`http://<IP de Home Assistant>:8099`.
+`custom:wled-anim-card`. L'adresse du hub n'est pas demandée : l'intégration
+le trouve toute seule. Elle ne la demande que si l'add-on ne répond pas
+(arrêté, ou installé sur une autre machine).
 
 **Ensuite.** Toutes les entités (alimentation, animation, luminosité, message,
 composition, icônes, notification en cours, file d'attente) viennent de
 l'add-on par MQTT. L'intégration apporte le service `wled_anim.flash` : des
 notifications qui passent en **file d'attente**, chacune jouée en entier.
 Dans la carte, l'onglet **Sélection** choisit les animations qui
-apparaissent dans les listes ; une liste copiée sur ce site s'y importe.
+apparaissent dans les listes, une catégorie entière d'un clic ; la
+sélection s'exporte en fichier et s'importe dans les deux sens, entre ce
+site et Home Assistant.
 Détails dans le [README de l'add-on](wled-hub/README.md).
 
 **Sécurité.** Le hub n'est joignable que depuis le réseau local, avec des
@@ -105,7 +108,8 @@ le hub ira lire. Une animation cassée n'arrive donc jamais sur le site.
 index.json                      { "32x8": "packs/32x8/index.json" }
 packs/32x8/index.json           catégories, métadonnées, empreintes SHA-256
 packs/32x8/wled-animations.js   le moteur du pack
-packs/32x8/gif/<id>.gif         les 241 GIF, 25 fps, 128 couleurs
+packs/32x8/gif/<id>.gif         un GIF par animation, 25 fps, 128 couleurs
+packs/32x8/retirees.json        les animations retirées, relues par le hub
 ```
 
 Le format de `index.json` est celui annoncé dans `wled-hub/hub.js`, au-dessus
@@ -133,6 +137,38 @@ L'application GitHub de Cloudflare doit avoir accès au dépôt : sur GitHub,
 *Settings → Applications → Cloudflare Workers and Pages → Configure →
 Repository access*.
 
+### Choisir ses animations sur le site
+
+Coche les animations voulues, une par une ou par catégorie : choisis une
+catégorie, puis **Tout sélectionner**. Chaque catégorie affiche combien
+elle en compte dans ta sélection (« Iron Man 3/12 »), et la sélection est
+gardée dans le navigateur d'une visite à l'autre.
+
+**Exporter** télécharge `selection-wled-32x8.json`. Ce fichier s'importe
+dans la carte Home Assistant (onglet Sélection → Importer), et
+réciproquement : la carte exporte le même format, que **Importer** relit
+ici. Une simple liste d'identifiants collée marche aussi.
+
+### Retirer une animation
+
+Une animation qui ne te plaît pas se retire sans toucher au code : son
+identifiant va dans `packs/32x8/retirees.txt`, une ligne par animation.
+Elle disparaît alors du site, des GIF publiés et des listes de Home
+Assistant (le hub relit la liste sur le site toutes les 6 h). Son code
+reste dans le moteur : pour la remettre, on efface sa ligne.
+
+Le plus simple, depuis le site :
+
+1. **Réglages → Mode gestion** (le choix est gardé dans ton navigateur).
+2. Coche les animations à retirer, puis **Retirer du site** — ou le même
+   bouton dans la fiche d'une animation.
+3. **Copier la liste**, puis **Ouvrir sur GitHub** : colle à la fin du
+   fichier et valide avec **Commit changes**.
+
+Cloudflare republie le site en deux minutes environ. Un identifiant mal
+tapé est simplement ignoré (le test le signale sans bloquer la
+publication).
+
 ### Ajouter une animation
 
 1. Un `ANIMS.push({ id, name, tag, desc, fx, speed, cols, render })` dans
@@ -143,7 +179,8 @@ Repository access*.
    table `CLIPS` de `tools/export-gif.js`.
 4. `npm run preview -- <id>` pour la relire sans dalle : une planche PNG dans
    `preview/`, plusieurs images réparties sur le cycle.
-5. `npm test`, puis `npm run sync-hub` pour l'add-on.
+5. `npm test`, puis `npm run sync-hub` pour l'add-on (moteur, catégories
+   et liste des retirées voyagent ensemble).
 6. Commit et push : le site se met à jour tout seul.
 
 ### Fan-art

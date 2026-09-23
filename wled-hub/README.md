@@ -57,6 +57,7 @@ fps: 40
 base_topic: wledhub
 discovery_prefix: homeassistant
 http_port: 8099
+catalog_sync: true     # relit les animations retirées du site (voir plus bas)
 panels:
   - id: panel01
     name: Panneau salon
@@ -184,13 +185,23 @@ directement (menu ⋮ → Importer).
 ## Choisir ses animations
 
 Le catalogue compte plus de 240 animations ; chacun garde celles qu'il veut
-voir. Dans la carte Lovelace, onglet **Sélection** : coche ou décoche, par
-catégorie entière ou une à une, puis **Enregistrer**. Sur le site, coche les
-animations voulues, **Copier les identifiants**, puis dans la carte
-**Importer une liste**.
+voir. Dans la carte Lovelace, onglet **Sélection** : la liste est rangée par
+catégorie, et la case d'une catégorie la coche ou la décoche en entier. On
+peut aussi cocher une à une, puis **Enregistrer**.
+
+**Exporter** télécharge la sélection en fichier (`selection-wled-32x8.json`),
+**Importer** en relit un : exporté du site ou d'un autre Home Assistant,
+c'est le même format. Une liste d'identifiants collée marche aussi. Dans
+l'onglet **Animations**, des puces filtrent la grille par catégorie.
 
 La sélection ne filtre que les **listes** (le sélecteur MQTT et l'onglet
-Animations de la carte). Une automatisation peut toujours jouer n'importe
+Animations de la carte).
+
+**Animations retirées.** Celles que le propriétaire du catalogue a retirées
+du site (`packs/32x8/retirees.txt`) sortent aussi des listes du hub. L'add-on
+embarque la liste et la relit sur le site toutes les 6 h ; la dernière lue
+est gardée dans `/data` pour un redémarrage hors ligne. `catalog_sync: false`
+coupe cette lecture. Une automatisation peut toujours jouer n'importe
 quelle animation par son identifiant. Elle est gardée dans `/data` et
 survit aux mises à jour de l'add-on.
 
@@ -256,6 +267,11 @@ une page web quelconque :
 
 L'option `allowed_hosts` ajoute des noms de domaine, pour qui accède à son
 Home Assistant par un nom maison.
+
+**Seule requête sortante :** avec `catalog_sync`, le hub lit toutes les 6 h
+`https://wled-animations.pages.dev/packs/32x8/retirees.json` — adresse fixe,
+sans redirection suivie, réponse bornée à 64 Ko, et seuls des identifiants
+d'animations connues en sont retenus.
 
 Les entrées sont bornées : corps de requête de 64 Ko, textes de 256
 caractères, 20 notifications en file, 16 panneaux. Une dalle ne peut être

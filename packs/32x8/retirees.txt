@@ -1,0 +1,17 @@
+# Animations retirees du catalogue 32x8
+#
+# Une ligne par animation : son identifiant, puis un commentaire libre
+# apres un #. Exemple :
+#
+#   ironflight         # Vol de nuit
+#
+# Une animation listee ici disparait du site, des GIF publies et des listes
+# de Home Assistant (le hub relit ce fichier sur le site toutes les 6 h).
+# Son code reste dans wled-animations.js : pour la remettre, il suffit
+# d'effacer sa ligne.
+#
+# Le plus simple : sur le site, Reglages -> Mode gestion, coche les
+# animations a retirer, puis « Retirer du site ». La liste est copiee et
+# cette page s'ouvre sur GitHub : colle a la fin, puis « Commit changes ».
+# Le site est republie tout seul en deux minutes environ.
+

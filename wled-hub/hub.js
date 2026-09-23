@@ -22,6 +22,11 @@
        text      texte de l'animation « message », le temps de la notif
        mode      file (defaut) | maintenant (coupe la file) | vider
 
+   Animations retirees : celles que le proprietaire du catalogue a
+   enlevees du site (packs/32x8/retirees.txt). Le hub embarque la liste et
+   la relit sur le site toutes les 6 h (option catalog_sync) ; elles
+   sortent alors de toutes les listes, comme sur le site.
+
    Selection : les animations que l'on garde dans les listes.
      GET  /api/selection            { tout, ids }
      POST /api/selection            { ids:[...] } ou { tout:true }
@@ -61,6 +66,7 @@
 const dgram = require('dgram');
 const net   = require('net');
 const http  = require('http');
+const https = require('https');
 const fs    = require('fs');
 const path  = require('path');
 const L     = require(path.join(__dirname, 'wled-animations.js'));
@@ -89,6 +95,10 @@ const HTTP_PORT = CFG.http_port || 8099;
 const DISCOVERY = CFG.discovery_prefix || 'homeassistant';
 const BASE      = CFG.base_topic || 'wledhub';
 const PANELS    = CFG.panels    || [];
+// Le site public, d'ou le hub relit la liste des animations retirees.
+// catalog_sync: false coupe toute requete sortante vers le site.
+const SITE      = CFG.catalog_sync === false ? null
+                : String(CFG.site_url || 'https://wled-animations.pages.dev').replace(/\/+$/, '');
 
 // Plus d'arret si la liste est vide : le plugin Home Assistant enregistre
 // ses panneaux a chaud via POST /api/panels.
@@ -448,6 +458,65 @@ try {
 const CAT_OF = {};
 for(const c of CATEGORIES) for(const id of c.animations) CAT_OF[id] = c.id;
 
+/* ═══ ANIMATIONS RETIREES ══════════════════════════════════════════════
+   Trois sources, de la plus ancienne a la plus fraiche : la copie
+   embarquee (retirees.txt, figee a la construction de l'add-on), la
+   derniere liste lue sur le site (gardee dans /data pour survivre a un
+   redemarrage hors ligne), puis la lecture du site toutes les 6 h.
+   Une animation retiree reste jouable par son identifiant : seules les
+   listes l'ignorent, exactement comme la selection. */
+const RET_CACHE = fs.existsSync('/data') ? '/data/retirees.json'
+                                         : path.join(__dirname,'retirees.json');
+function lireRetirees(texte){
+  const ids = [];
+  for(const ligne of String(texte || '').split(/\r?\n/)){
+    const m = /^\s*([a-z0-9_-]+)/i.exec(ligne.replace(/#.*/, ''));
+    if(m && !ids.includes(m[1].toLowerCase())) ids.push(m[1].toLowerCase());
+  }
+  return ids;
+}
+const connue = id => !!L.getAnim(id);
+let RETIREES = new Set();
+try { RETIREES = new Set(lireRetirees(fs.readFileSync(path.join(__dirname,'retirees.txt'),'utf8')).filter(connue)); }
+catch(e){ /* pas de liste embarquee */ }
+try {
+  const j = JSON.parse(fs.readFileSync(RET_CACHE,'utf8'));
+  if(Array.isArray(j.retirees)) RETIREES = new Set(j.retirees.map(String).filter(connue));
+} catch(e){ /* jamais lue sur le site */ }
+const visible = id => connue(id) && !RETIREES.has(id);
+const animsVisibles = () => L.ANIMS.filter(a => visible(a.id));
+
+function appliquerRetirees(ids){
+  const nouveau = new Set(ids.map(String).filter(connue));
+  const pareil = nouveau.size === RETIREES.size && [...nouveau].every(id => RETIREES.has(id));
+  try { fs.writeFileSync(RET_CACHE, JSON.stringify({ retirees:[...nouveau] })); } catch(e){}
+  if(pareil) return;
+  RETIREES = nouveau;
+  console.log('[hub] animations retirees (site) : %d', RETIREES.size);
+  if(mq) for(const p of panels){ discovery(p); publishState(p); }
+}
+
+/** Relit la liste sur le site. Adresse fixe, pas de redirection suivie,
+    reponse bornee a 64 Ko : rien d'autre qu'une liste d'identifiants
+    connus ne peut en sortir. */
+function suivreSite(){
+  if(!SITE) return;
+  const url = `${SITE}/packs/${L.W}x${L.H}/retirees.json`;
+  const req = https.get(url, { timeout:10000, headers:{ 'User-Agent':'wled-hub' } }, res => {
+    if(res.statusCode !== 200){ res.resume(); console.warn('[hub] %s : HTTP %d', url, res.statusCode); return; }
+    const morceaux = []; let n = 0;
+    res.on('data', c => { n += c.length; if(n > 64*1024) req.destroy(); else morceaux.push(c); });
+    res.on('end', () => {
+      try {
+        const j = JSON.parse(Buffer.concat(morceaux).toString('utf8'));
+        if(Array.isArray(j.retirees)) appliquerRetirees(j.retirees);
+      } catch(e){ console.warn('[hub] liste des retirees illisible :', e.message); }
+    });
+  });
+  req.on('timeout', () => req.destroy(new Error('delai depasse')));
+  req.on('error', e => console.warn('[hub] site injoignable (%s) : liste des retirees inchangee', e.message));
+}
+
 /* ═══ SELECTION ════════════════════════════════════════════════════════
    Le site propose des centaines d'animations ; chacun garde celles qu'il
    veut voir. La selection ne filtre que les LISTES (select MQTT, carte) :
@@ -461,7 +530,7 @@ try {
   if(Array.isArray(j.ids)) SELECTION = new Set(j.ids.filter(id => L.getAnim(id)));
 } catch(e){ /* pas de selection : tout le catalogue */ }
 const estChoisie = id => !SELECTION || SELECTION.has(id);
-const animsChoisies = () => L.ANIMS.filter(a => estChoisie(a.id));
+const animsChoisies = () => animsVisibles().filter(a => estChoisie(a.id));
 
 /** ids = null pour revenir a tout le catalogue. Renvoie un message
     d'erreur, ou null si c'est enregistre. */
@@ -530,7 +599,12 @@ for(const c of loadStored()){
 }
 console.log('[hub] %d panneau(x) : %s', panels.length,
             panels.map(p=>p.id).join(', ') || '(aucun)');
-console.log('[hub] catalogue %s : %d animations', GEOMETRY, catalogFor(L.W,L.H).length);
+console.log('[hub] catalogue %s : %d animations, %d retiree(s)', GEOMETRY, animsVisibles().length, RETIREES.size);
+// Premiere lecture une fois MQTT lance, puis toutes les 6 h.
+if(SITE){
+  setTimeout(suivreSite, 5000);
+  setInterval(suivreSite, 6*3600*1000).unref();
+}
 
 // Les icones sont en cache disque : ce rechargement est quasi instantane
 // hors premier demarrage, et ne bloque pas la boucle de rendu.
@@ -780,10 +854,10 @@ http.createServer((req,res) => {
       {id:p.id,name:p.name,width:p.width,height:p.height}, p.state())));
 
   if(req.method==='GET' && url==='/api/animations')
-    return json(200, L.ANIMS.map(a => ({id:a.id,name:a.name,tag:a.tag,selected:estChoisie(a.id)})));
+    return json(200, animsVisibles().map(a => ({id:a.id,name:a.name,tag:a.tag,selected:estChoisie(a.id)})));
 
   if(req.method==='GET' && url==='/api/selection')
-    return json(200, { tout: !SELECTION, ids: animsChoisies().map(a => a.id), total: L.ANIMS.length });
+    return json(200, { tout: !SELECTION, ids: animsChoisies().map(a => a.id), total: animsVisibles().length, retirees: [...RETIREES] });
 
   if(req.method==='POST' && url==='/api/selection'){
     let body='';
@@ -797,7 +871,7 @@ http.createServer((req,res) => {
       try { err = enregistrerSelection(j.tout ? null : j.ids); }
       catch(e){ return json(500,{error:e.message}); }
       if(err) return json(400,{error:err});
-      json(200, { tout: !SELECTION, ids: animsChoisies().map(a => a.id), total: L.ANIMS.length });
+      json(200, { tout: !SELECTION, ids: animsChoisies().map(a => a.id), total: animsVisibles().length, retirees: [...RETIREES] });
     });
     return;
   }
@@ -808,7 +882,7 @@ http.createServer((req,res) => {
     const w = parseInt(q.get('w'),10)||L.W, h = parseInt(q.get('h'),10)||L.H;
     return json(200, {
       geometry:`${w}x${h}`,
-      animations: catalogFor(w,h).map(a => Object.assign({}, a,
+      animations: catalogFor(w,h).filter(a => visible(a.id)).map(a => Object.assign({}, a,
         { category: CAT_OF[a.id] || null, selected: estChoisie(a.id) })),
       categories: CATEGORIES.map(c => ({ id:c.id, name:c.name })),
       selection_active: !!SELECTION

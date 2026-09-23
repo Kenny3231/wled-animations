@@ -16,10 +16,12 @@ const ROOT = path.join(__dirname, '..');
 const SRC  = path.join(ROOT, 'packs', '32x8', 'wled-animations.js');
 const DST  = path.join(ROOT, 'wled-hub', 'wled-animations.js');
 
-// Le moteur et le classement par categories voyagent ensemble.
+// Le moteur, le classement par categories et la liste des animations
+// retirees voyagent ensemble. Le hub relit ensuite cette liste sur le site
+// (option site_url) : la copie embarquee ne sert que hors ligne.
 let change = false;
-for(const [src, dst] of [[SRC, DST],
-    [path.join(ROOT, 'packs', '32x8', 'categories.json'), path.join(ROOT, 'wled-hub', 'categories.json')]]){
+const pack = f => [path.join(ROOT, 'packs', '32x8', f), path.join(ROOT, 'wled-hub', f)];
+for(const [src, dst] of [[SRC, DST], pack('categories.json'), pack('retirees.txt')]){
   const avant = fs.existsSync(dst) ? fs.readFileSync(dst) : null;
   if(avant && avant.equals(fs.readFileSync(src))) continue;
   fs.copyFileSync(src, dst); change = true;

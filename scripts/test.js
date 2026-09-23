@@ -20,6 +20,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const { retireesDuPack } = require('./retirees');
 
 const ROOT  = path.join(__dirname, '..');
 const PACKS = path.join(ROOT, 'packs');
@@ -144,6 +145,13 @@ function testerPack(geo){
   }
   if(!boucle) ok(`${nExact} boucles exactes vérifiées image à image`);
 
+  /* animations retirees : une faute de frappe ne bloque pas la publication
+     (le fichier s'edite a la main sur GitHub), mais elle est signalee. */
+  const ret = retireesDuPack(dir, L.ANIMS);
+  if(ret.inconnus.length) console.warn(`  ! retirees.txt : identifiant(s) inconnu(s), ignore(s) : ${ret.inconnus.join(', ')}`);
+  if(ret.ids.length >= ids.length) ko('retirees.txt retire toutes les animations');
+  else ok(`${ret.ids.length} animation(s) retiree(s) du catalogue`);
+
   /* compatibilite navigateur */
   const src = fs.readFileSync(file, 'utf8');
   if(/\brequire\s*\(/.test(src) || /\bprocess\./.test(src))
@@ -171,6 +179,10 @@ if(fs.existsSync(HUB)){
   if(!fs.existsSync(catHub) || fs.readFileSync(catHub, 'utf8') !== fs.readFileSync(path.join(PACKS, '32x8', 'categories.json'), 'utf8'))
     ko('wled-hub/categories.json differe de packs/32x8 — lancer « npm run sync-hub »');
   else ok('categories embarquees identiques a la source');
+  const retHub = path.join(ROOT, 'wled-hub', 'retirees.txt');
+  if(!fs.existsSync(retHub) || fs.readFileSync(retHub, 'utf8') !== fs.readFileSync(path.join(PACKS, '32x8', 'retirees.txt'), 'utf8'))
+    ko('wled-hub/retirees.txt differe de packs/32x8 — lancer « npm run sync-hub »');
+  else ok('liste des retirees embarquee identique a la source');
 }
 
 console.log(echecs ? `\n  ${echecs} echec(s)\n` : '\n  Tout est bon\n');

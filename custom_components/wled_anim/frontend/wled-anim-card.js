@@ -78,8 +78,10 @@ class WledAnimCard extends HTMLElement {
     this._categories = [];
     this._choix = null;           // selection en cours d'edition (Set d'ids)
     this._choixModifie = false;
-    this._catFiltre = '';
+    this._catFiltre = '';         // categorie affichee dans l'onglet Selection
+    this._catAnims = '';          // categorie affichee dans l'onglet Animations
     this._importOuvert = false;
+    this._importTexte = '';
     this._icones = [];
     this._iconeCache = new Map();     // id -> images decodees
     // setConfig est rappele a chaque frappe dans l'editeur visuel : un second
@@ -375,6 +377,9 @@ class WledAnimCard extends HTMLElement {
 
   /* ═══ ONGLET ANIMATIONS ══════════════════════════════════════════ */
   _vueAnims(vue) {
+    // Reconstruit a chaque frappe et a chaque puce : l'ancien observateur
+    // surveillerait sinon des vignettes qui n'existent plus.
+    if (this._io) { this._io.disconnect(); this._io = null; }
     const p = this._p;
     if (!this._anims.length) {
       vue.innerHTML = `<div class="err">Aucun pack d'animations pour la geometrie
@@ -384,22 +389,42 @@ class WledAnimCard extends HTMLElement {
     }
     // Seulement la selection : c'est tout l'interet de l'avoir faite.
     const base = this._anims.filter(a => a.selected !== false);
+    // Les puces ne proposent que les categories qui ont au moins une
+    // animation gardee : une puce vide ne menerait nulle part.
+    const cats = this._categories
+      .map(c => ({ id: c.id, name: c.name, n: base.filter(a => a.category === c.id).length }))
+      .filter(c => c.n);
+    if (this._catAnims && !cats.some(c => c.id === this._catAnims)) this._catAnims = '';
     const f = this._filtre.trim().toLowerCase();
-    const liste = f ? base.filter(a =>
-      (a.name + ' ' + (a.tag || '')).toLowerCase().indexOf(f) >= 0) : base;
+    const liste = base.filter(a => (!this._catAnims || a.category === this._catAnims) &&
+      (!f || (a.name + ' ' + (a.tag || '')).toLowerCase().indexOf(f) >= 0));
+    const defil = vue.querySelector('#cats') ? vue.querySelector('#cats').scrollLeft : 0;
 
     vue.innerHTML = `
       <div class="barre">
         <input type="search" id="q" placeholder="Filtrer les animations…" value="${esc(this._filtre)}">
         <span class="compte">${liste.length} / ${base.length}</span>
       </div>
+      ${cats.length > 1 ? `<div class="puces" id="cats" role="group" aria-label="Catégories">
+        <button data-c="" class="${this._catAnims ? '' : 'actif'}">Toutes <i>${base.length}</i></button>${cats.map(c =>
+        `<button data-c="${esc(c.id)}" class="${this._catAnims === c.id ? 'actif' : ''}">${esc(c.name)} <i>${c.n}</i></button>`).join('')}</div>` : ''}
       <div class="grille" id="grille"></div>`;
 
+    const puces = vue.querySelector('#cats');
+    if (puces) {
+      puces.scrollLeft = defil;
+      puces.querySelectorAll('button').forEach(b => b.onclick = () => {
+        this._catAnims = b.dataset.c;
+        this._vueAnims(vue);
+        this._sync();
+      });
+    }
     const q = vue.querySelector('#q');
     q.oninput = e => {
       this._filtre = e.target.value;
       const pos = e.target.selectionStart;
       this._vueAnims(vue);
+      this._sync();
       const n = vue.querySelector('#q');
       n.focus(); n.setSelectionRange(pos, pos);
     };
@@ -425,7 +450,7 @@ class WledAnimCard extends HTMLElement {
       c.cell = cell; c.vis = false;
       this._cells.push(c);
     }
-    // On n'anime que ce qui est a l'ecran : 141 canvas sinon, tous en vol.
+    // On n'anime que ce qui est a l'ecran : 240 canvas sinon, tous en vol.
     this._io = new IntersectionObserver(es => es.forEach(e => {
       const c = this._cells && this._cells.find(x => x.cell === e.target);
       if (c) c.vis = e.isIntersecting;
@@ -437,43 +462,87 @@ class WledAnimCard extends HTMLElement {
      Le site propose des centaines d'animations : ici on garde celles qui
      doivent apparaitre dans Home Assistant (selecteur MQTT, onglet
      Animations). Une automatisation peut toujours jouer les autres par
-     leur identifiant. La liste copiee sur le site s'importe telle quelle. */
+     leur identifiant.
+
+     La liste est rangee par categorie ; la case d'une categorie coche ou
+     decoche la categorie entiere. Le fichier exporte ici a le meme format
+     que celui du site : il s'importe dans les deux sens. */
   _vueChoix(vue) {
     if (!this._choix) this._choix = new Set(this._anims.filter(a => a.selected !== false).map(a => a.id));
     const total = this._anims.length;
-    const dansCat = a => !this._catFiltre || a.category === this._catFiltre;
     const f = this._filtre.trim().toLowerCase();
-    const liste = this._anims.filter(a => dansCat(a) &&
-      (!f || (a.name + ' ' + a.id + ' ' + (a.tag || '')).toLowerCase().indexOf(f) >= 0));
-    const cats = [{ id: '', name: 'Toutes' }].concat(this._categories);
-    const compte = c => {
-      const dedans = c.id ? this._anims.filter(a => a.category === c.id) : this._anims;
-      return `${dedans.filter(a => this._choix.has(a.id)).length}/${dedans.length}`;
-    };
+    const correspond = a => !f || (a.name + ' ' + a.id + ' ' + (a.tag || '')).toLowerCase().indexOf(f) >= 0;
+
+    // Groupes dans l'ordre des categories, les non classees a la fin.
+    const connues = new Set(this._categories.map(c => c.id));
+    const groupes = this._categories.map(c => ({ id: c.id, name: c.name,
+      anims: this._anims.filter(a => a.category === c.id) }));
+    groupes.push({ id: '_autres', name: 'Autres', anims: this._anims.filter(a => !connues.has(a.category)) });
+    const pleins = groupes.filter(g => g.anims.length);
+    if (this._catFiltre && !pleins.some(g => g.id === this._catFiltre)) this._catFiltre = '';
+    const visibles = pleins
+      .filter(g => !this._catFiltre || g.id === this._catFiltre)
+      .map(g => Object.assign({}, g, { liste: g.anims.filter(correspond) }))
+      .filter(g => g.liste.length);
+    const liste = visibles.flatMap(g => g.liste);
+    const nbGardees = anims => anims.filter(a => this._choix.has(a.id)).length;
+    const compte = anims => `${nbGardees(anims)}/${anims.length}`;
     const peutEnregistrer = () => this._choixModifie && this._choix.size > 0;
+    const defil = vue.querySelector('#cats') ? vue.querySelector('#cats').scrollLeft : 0;
 
     vue.innerHTML = `
       <div class="barre">
         <input type="search" id="q" placeholder="Filtrer…" value="${esc(this._filtre)}">
         <span class="compte" id="nb">${this._choix.size} / ${total} gardées</span>
       </div>
-      <div class="puces" id="cats">${cats.map(c => `<button data-c="${esc(c.id)}"
-        class="${this._catFiltre === c.id ? 'actif' : ''}">${esc(c.name)} <i>${compte(c)}</i></button>`).join('')}</div>
+      <div class="puces" id="cats" role="group" aria-label="Catégories">
+        <button data-c="" class="${this._catFiltre ? '' : 'actif'}">Toutes <i>${compte(this._anims)}</i></button>${pleins.map(g =>
+        `<button data-c="${esc(g.id)}" class="${this._catFiltre === g.id ? 'actif' : ''}">${esc(g.name)} <i>${compte(g.anims)}</i></button>`).join('')}</div>
       <div class="actions">
-        <button id="tous" class="mini">Tout cocher</button>
-        <button id="aucun" class="mini">Tout décocher</button>
-        <button id="imp" class="mini">Importer une liste</button>
+        <button id="tous" class="mini" title="Coche tout ce qui est affiché">Tout cocher</button>
+        <button id="aucun" class="mini" title="Décoche tout ce qui est affiché">Tout décocher</button>
+        <button id="imp" class="mini${this._importOuvert ? ' actif' : ''}">Importer</button>
+        <button id="exp" class="mini" title="Télécharge un fichier à importer sur le site ou dans un autre Home Assistant">Exporter</button>
+        <button id="cop" class="mini" title="Copie les identifiants, un par ligne">Copier</button>
         <span class="espace"></span>
         <button id="complet" class="mini" title="Remettre tout le catalogue dans les listes">Tout le catalogue</button>
         <button id="enreg" class="mini primaire" ${peutEnregistrer() ? '' : 'disabled'}>Enregistrer</button>
       </div>
       ${this._importOuvert ? `<div class="import">
-        <textarea id="txt" rows="3" placeholder="Colle ici les identifiants copiés sur le site (un par ligne, ou séparés par des virgules)"></textarea>
-        <button id="okimp" class="mini primaire">Remplacer la sélection</button></div>` : ''}
+        <input type="file" id="fic" accept=".json,.txt,application/json,text/plain" aria-label="Fichier de sélection">
+        <textarea id="txt" rows="3" placeholder="…ou colle ici un fichier exporté (site ou Home Assistant), ou des identifiants un par ligne">${esc(this._importTexte)}</textarea>
+        <div class="ligne"><span class="aide" id="impmsg"></span>
+          <button id="okadd" class="mini">Ajouter</button>
+          <button id="okimp" class="mini primaire">Remplacer la sélection</button></div></div>` : ''}
       <p class="aide">Les animations décochées disparaissent du sélecteur MQTT et de l'onglet
         Animations. Une automatisation peut toujours les jouer par leur identifiant.</p>
-      <ul class="choix">${liste.map(a => `<li><label><input type="checkbox" data-id="${esc(a.id)}"
-        ${this._choix.has(a.id) ? 'checked' : ''}><span class="nm">${esc(a.name)}</span><code>${esc(a.id)}</code></label></li>`).join('')}</ul>`;
+      <ul class="choix">${visibles.map(g => `
+        <li class="groupe"><label><input type="checkbox" data-g="${esc(g.id)}"><span class="nm">${esc(g.name)}</span><i data-gc="${esc(g.id)}">${compte(g.anims)}</i></label></li>${g.liste.map(a =>
+        `<li><label><input type="checkbox" data-id="${esc(a.id)}" ${this._choix.has(a.id) ? 'checked' : ''}><span class="nm">${esc(a.name)}</span><code>${esc(a.id)}</code></label></li>`).join('')}`).join('')}</ul>`;
+
+    const puces = vue.querySelector('#cats');
+    if (puces) puces.scrollLeft = defil;
+
+    // Compteurs et cases de categorie, sans reconstruire la liste (elle ne
+    // saute pas quand on coche).
+    const majCompteurs = () => {
+      vue.querySelector('#nb').textContent = `${this._choix.size} / ${total} gardées`;
+      vue.querySelectorAll('#cats button').forEach(b => {
+        const g = b.dataset.c ? pleins.find(x => x.id === b.dataset.c) : { anims: this._anims };
+        if (g) b.querySelector('i').textContent = compte(g.anims);
+      });
+      vue.querySelectorAll('.choix input[data-g]').forEach(cb => {
+        const g = pleins.find(x => x.id === cb.dataset.g); if (!g) return;
+        const n = nbGardees(g.anims);
+        cb.checked = n === g.anims.length;
+        cb.indeterminate = n > 0 && n < g.anims.length;
+        const i = vue.querySelector(`.choix i[data-gc="${CSS.escape(g.id)}"]`);
+        if (i) i.textContent = compte(g.anims);
+      });
+      vue.querySelectorAll('.choix input[data-id]').forEach(cb => { cb.checked = this._choix.has(cb.dataset.id); });
+      vue.querySelector('#enreg').disabled = !peutEnregistrer();
+    };
+    majCompteurs();
 
     // Reconstruire en gardant la position dans la liste.
     const refaire = () => {
@@ -490,31 +559,99 @@ class WledAnimCard extends HTMLElement {
       const n = vue.querySelector('#q'); n.focus(); n.setSelectionRange(pos, pos);
     };
     vue.querySelectorAll('#cats button').forEach(b => b.onclick = () => { this._catFiltre = b.dataset.c; refaire(); });
-    vue.querySelectorAll('.choix input').forEach(cb => cb.onchange = () => {
+    vue.querySelectorAll('.choix input[data-id]').forEach(cb => cb.onchange = () => {
       cb.checked ? this._choix.add(cb.dataset.id) : this._choix.delete(cb.dataset.id);
       this._choixModifie = true;
-      // Pas de reconstruction ici : juste les compteurs, la liste ne saute pas.
-      vue.querySelector('#nb').textContent = `${this._choix.size} / ${total} gardées`;
-      vue.querySelectorAll('#cats button').forEach(b => {
-        const c = cats.find(x => x.id === b.dataset.c); if (c) b.querySelector('i').textContent = compte(c);
-      });
-      vue.querySelector('#enreg').disabled = !peutEnregistrer();
+      majCompteurs();
+    });
+    // La case d'une categorie vise la categorie ENTIERE, meme si le filtre
+    // de texte n'en montre qu'une partie.
+    vue.querySelectorAll('.choix input[data-g]').forEach(cb => cb.onchange = () => {
+      const g = pleins.find(x => x.id === cb.dataset.g); if (!g) return;
+      const cocher = nbGardees(g.anims) < g.anims.length;
+      g.anims.forEach(a => cocher ? this._choix.add(a.id) : this._choix.delete(a.id));
+      this._choixModifie = true;
+      majCompteurs();
     });
     // « Tout cocher / décocher » agit sur ce qui est affiché : une catégorie
     // entière quand une puce est choisie, le résultat du filtre sinon.
-    vue.querySelector('#tous').onclick = () => { liste.forEach(a => this._choix.add(a.id)); this._choixModifie = true; refaire(); };
-    vue.querySelector('#aucun').onclick = () => { liste.forEach(a => this._choix.delete(a.id)); this._choixModifie = true; refaire(); };
+    vue.querySelector('#tous').onclick = () => { liste.forEach(a => this._choix.add(a.id)); this._choixModifie = true; majCompteurs(); };
+    vue.querySelector('#aucun').onclick = () => { liste.forEach(a => this._choix.delete(a.id)); this._choixModifie = true; majCompteurs(); };
     vue.querySelector('#imp').onclick = () => { this._importOuvert = !this._importOuvert; refaire(); };
-    const ok = vue.querySelector('#okimp');
-    if (ok) ok.onclick = () => {
-      const connus = new Set(this._anims.map(a => a.id));
-      const ids = (vue.querySelector('#txt').value.match(/[a-z0-9_-]+/gi) || [])
-        .map(x => x.toLowerCase()).filter(id => connus.has(id));
-      if (!ids.length) { vue.querySelector('#txt').value = ''; vue.querySelector('#txt').placeholder = 'Aucun identifiant reconnu'; return; }
-      this._choix = new Set(ids); this._importOuvert = false; this._choixModifie = true; refaire();
-    };
+    vue.querySelector('#exp').onclick = () => this._exporterChoix();
+    vue.querySelector('#cop').onclick = e => this._copierChoix(e.currentTarget);
+
+    if (this._importOuvert) {
+      const txt = vue.querySelector('#txt'), msg = vue.querySelector('#impmsg');
+      const analyser = () => {
+        this._importTexte = txt.value;
+        const r = this._lireIds(txt.value);
+        msg.textContent = !txt.value.trim() ? ''
+          : `${r.ok.length} animation(s) reconnue(s)` + (r.ignores.length ? ` · ${r.ignores.length} ignorée(s)` : '');
+        vue.querySelector('#okadd').disabled = vue.querySelector('#okimp').disabled = !r.ok.length;
+        return r;
+      };
+      txt.oninput = analyser;
+      vue.querySelector('#fic').onchange = e => {
+        const fic = e.target.files && e.target.files[0]; if (!fic) return;
+        if (fic.size > 1024 * 1024) { msg.textContent = 'Fichier trop gros pour une sélection (1 Mo au plus).'; return; }
+        fic.text().then(t => { txt.value = t; analyser(); });
+      };
+      const importer = remplacer => {
+        const r = analyser(); if (!r.ok.length) return;
+        if (remplacer) this._choix = new Set(r.ok);
+        else r.ok.forEach(id => this._choix.add(id));
+        this._importOuvert = false; this._importTexte = ''; this._choixModifie = true;
+        refaire();
+      };
+      vue.querySelector('#okadd').onclick = () => importer(false);
+      vue.querySelector('#okimp').onclick = () => importer(true);
+      analyser();
+    }
     vue.querySelector('#complet').onclick = () => this._enregistrerChoix({ tout: true }, vue);
     vue.querySelector('#enreg').onclick = () => this._enregistrerChoix({ ids: [...this._choix] }, vue);
+  }
+
+  /** Identifiants d'un texte importe : fichier exporte (site ou carte),
+      tableau JSON, ou liste libre. Seuls ceux du catalogue sont gardes. */
+  _lireIds(texte) {
+    let brut = null;
+    try {
+      const j = JSON.parse(texte);
+      brut = Array.isArray(j) ? j : j && Array.isArray(j.animations) ? j.animations
+           : j && Array.isArray(j.ids) ? j.ids : null;
+    } catch (e) { /* pas du JSON : une liste */ }
+    if (!brut) brut = String(texte || '').replace(/#.*$/gm, '').match(/[a-z0-9_-]+/gi) || [];
+    const connus = new Set(this._anims.map(a => a.id)), vus = new Set(), ok = [], ignores = [];
+    for (const x of brut) {
+      const id = String(x).trim().toLowerCase();
+      if (!id || vus.has(id)) continue; vus.add(id);
+      (connus.has(id) ? ok : ignores).push(id);
+    }
+    return { ok, ignores };
+  }
+
+  /** La selection en cours d'edition, dans l'ordre du catalogue. */
+  _idsChoisis() { return this._anims.filter(a => this._choix && this._choix.has(a.id)).map(a => a.id); }
+
+  _exporterChoix() {
+    const p = this._p;
+    const geo = p ? `${Number(p.width)}x${Number(p.height)}` : '32x8';
+    const corps = { format: 'wled-animations/selection', version: 1, geometrie: geo,
+      source: 'home-assistant', exporte_le: new Date().toISOString(), animations: this._idsChoisis() };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(corps, null, 2) + '\n'], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `selection-wled-${geo}.json`;
+    this.shadowRoot.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  /** Le presse-papiers n'existe qu'en HTTPS : en HTTP on montre la liste. */
+  _copierChoix(btn) {
+    const texte = this._idsChoisis().join('\n');
+    const fait = () => { const l = btn.textContent; btn.textContent = 'Copié ✓'; setTimeout(() => { btn.textContent = l; }, 1500); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(texte).then(fait, () => window.prompt('Copie cette liste :', texte));
+    else window.prompt('Copie cette liste :', texte);
   }
 
   async _enregistrerChoix(corps, vue) {
@@ -1004,7 +1141,10 @@ WledAnimCard.CSS = `
   .import{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
   .import textarea{font:inherit;font-size:12.5px;padding:8px;border-radius:9px;resize:vertical;
     background:var(--card-background-color);color:var(--primary-text-color);border:1px solid var(--sep)}
-  .import button{align-self:flex-end}
+  .import input[type=file]{font:inherit;font-size:12px;color:var(--secondary-text-color);max-width:100%}
+  .import .ligne{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .import .ligne .aide{flex:1;margin:0}
+  .mini.actif{border-color:var(--acc);color:var(--acc)}
   .aide{margin:0 0 8px;font-size:12px;line-height:1.5;color:var(--secondary-text-color)}
   .choix{list-style:none;margin:0;padding:0;max-height:52vh;overflow-y:auto;
     border:1px solid var(--sep);border-radius:10px}
@@ -1013,6 +1153,13 @@ WledAnimCard.CSS = `
   .choix input{accent-color:var(--acc);width:16px;height:16px;flex:none}
   .choix .nm{flex:1;color:var(--primary-text-color);font-size:13px}
   .choix code{color:var(--secondary-text-color);font-size:11.5px}
+  /* En-tete de categorie : reste en haut pendant qu'on fait defiler ses animations. */
+  .choix li.groupe{position:sticky;top:0;z-index:1;
+    background:var(--secondary-background-color,var(--card-background-color))}
+  .choix li.groupe label{padding:8px 10px}
+  .choix li.groupe .nm{font-weight:600}
+  .choix li.groupe i{font-style:normal;font-size:12px;color:var(--secondary-text-color);font-variant-numeric:tabular-nums}
+  .choix li:not(.groupe) label{padding-left:30px}
   .notif{margin-left:6px;color:var(--acc);font-size:12px}
 
   .reglages{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
@@ -1301,4 +1448,4 @@ if(!window.customCards.some(c => c.type === 'wled-anim-card')) window.customCard
   preview: true
 });
 
-console.info('%c WLED-ANIM-CARD %c 1.6.1 ', 'background:#ff4d2e;color:#fff', 'background:#333;color:#fff');
+console.info('%c WLED-ANIM-CARD %c 1.7.0 ', 'background:#ff4d2e;color:#fff', 'background:#333;color:#fff');

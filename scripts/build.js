@@ -7,6 +7,7 @@
      index.html                     la galerie, autonome (marche hors ligne)
      index.json                     { "32x8": "packs/32x8/index.json", ... }
      packs/<geo>/index.json         metadonnees, categories, empreintes
+     packs/<geo>/retirees.json      animations retirees, relu par le hub
      packs/<geo>/wled-animations.js le moteur du pack, copie a l'octet pres
      packs/<geo>/gif/<id>.gif       GIF natifs, 25 fps, 128 couleurs
      _headers                       CORS et cache pour Cloudflare Pages
@@ -29,6 +30,7 @@ const fs     = require('fs');
 const path   = require('path');
 const crypto = require('crypto');
 const vm     = require('vm');
+const { retireesDuPack } = require('./retirees');
 
 const ROOT  = path.join(__dirname, '..');
 const PACKS = path.join(ROOT, 'packs');
@@ -37,6 +39,14 @@ const NO_GIF = process.argv.includes('--no-gif');
 
 const GIF_CFG = { fps: 25, scale: 1, colors: 128 };
 const COMMIT  = process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || null;
+
+// Adresse du depot, pour le mode gestion de la galerie : c'est la que
+// s'edite la liste des animations retirees.
+const PKG   = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const DEPOT = String((PKG.repository && PKG.repository.url) || PKG.repository || '')
+  .replace(/^git\+/, '').replace(/\.git$/, '');
+if(!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(DEPOT))
+  throw new Error('package.json : « repository » doit etre l\'adresse GitHub du depot');
 
 const sha256 = b => crypto.createHash('sha256').update(b).digest('hex');
 const ecrire = (f, data) => {
@@ -53,6 +63,7 @@ const packs = fs.readdirSync(PACKS, { withFileTypes: true })
   .sort();
 
 const racine = {};
+const RETIREES = {};
 let total = 0;
 
 for(const geo of packs){
@@ -64,6 +75,14 @@ for(const geo of packs){
   const catOf  = {};
   for(const c of cats) for(const id of c.animations) catOf[id] = c.id;
 
+  // Les animations retirees gardent leur code dans le moteur (on peut les
+  // remettre en effacant une ligne) mais ne sont plus publiees.
+  const ret = retireesDuPack(src, L.ANIMS);
+  const retirees = new Set(ret.ids);
+  RETIREES[geo] = ret.ids;
+  if(ret.inconnus.length) console.warn(`  ${geo} : identifiant(s) inconnu(s) dans retirees.txt, ignore(s) : ${ret.inconnus.join(', ')}`);
+  ecrire(path.join(out, 'retirees.json'), json({ geometry: geo, retirees: ret.ids }));
+
   ecrire(path.join(out, 'wled-animations.js'), engine);
 
   // L'encodeur GIF est calibre sur le pack 32x8 (sa table de durees et
@@ -72,7 +91,7 @@ for(const geo of packs){
   if(!NO_GIF && !gif) console.warn(`  ${geo} : pas encore d'export GIF pour ce format, GIF sautes`);
 
   let poids = 0;
-  const animations = L.ANIMS.map(a => {
+  const animations = L.ANIMS.filter(a => !retirees.has(a.id)).map(a => {
     const e = {
       id: a.id, name: a.name, tag: a.tag, category: catOf[a.id] || null,
       desc: a.desc, fx: a.fx, speed: a.speed, cols: a.cols
@@ -100,7 +119,7 @@ for(const geo of packs){
 
   racine[geo] = `packs/${geo}/index.json`;
   total += animations.length;
-  console.log(`  ${geo} : ${animations.length} animations`
+  console.log(`  ${geo} : ${animations.length} animations` + (ret.ids.length ? ` (${ret.ids.length} retiree(s))` : '')
     + (gif ? `, ${animations.length} GIF (${(poids / 1024 / 1024).toFixed(1)} Mo)` : ''));
 }
 
@@ -127,6 +146,8 @@ let empreinteScript = null;
     .replace('/*@@MOTEUR@@*/', () => 'var module = { exports: {} };\n' + engine)
     .replace('/*@@CLIPS@@*/{}', () => JSON.stringify(CLIPS))
     .replace('/*@@CATEGORIES@@*/[]', () => JSON.stringify(cats))
+    .replace('/*@@RETIREES@@*/[]', () => JSON.stringify(RETIREES[geo] || []))
+    .replace(/@@DEPOT@@/g, () => DEPOT)
     .replace('@@DATE@@', () => date);
 
   const reste = html.match(/@@[A-Z]+@@/g);

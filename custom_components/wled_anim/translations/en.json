@@ -3,9 +3,15 @@
     "step": {
       "user": {
         "title": "Animated WLED panel",
-        "description": "Pick a device already configured by the WLED integration, then give the animation hub address.",
+        "description": "Pick a device already configured by the WLED integration.",
         "data": {
-          "source": "WLED device",
+          "source": "WLED device"
+        }
+      },
+      "hub": {
+        "title": "Animation hub not found",
+        "description": "The hub did not answer on any of its usual addresses. Check that the WLED Animations Hub add-on is installed and running, then submit. If it runs on another machine, enter its address.",
+        "data": {
           "hub_url": "Hub address"
         }
       },

@@ -4,6 +4,10 @@
   "private": true,
   "description": "Animations pixel pour dalles WLED, rangees par format, avec galerie et catalogue pour le hub Home Assistant",
   "author": "domo-lab31 - Kenny3231",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kenny3231/wled-animations"
+  },
   "scripts": {
     "test": "node scripts/test.js",
     "build": "node scripts/build.js",

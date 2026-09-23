@@ -6,12 +6,18 @@ Recupere nom et adresse depuis les appareils deja configures par
 l'integration WLED officielle, puis demande la geometrie de la dalle et
 le nom de l'entite.
 
+Le hub n'est pas demande : il est cherche aux adresses habituelles de
+l'add-on (HUB_CANDIDATES) et a celle des panneaux deja configures. Son
+adresse n'est demandee que si rien ne repond, par exemple quand il tourne
+sur une autre machine.
+
 Note : un config flow Home Assistant n'affiche que des champs de
 formulaire, jamais d'image animee. L'apercu anime des animations vit dans
 la carte Lovelace `wled-anim-card`.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from typing import Any
@@ -44,6 +50,7 @@ from .const import (
     DEFAULT_HUB_URL,
     DOMAIN,
     GEOMETRIES,
+    HUB_CANDIDATES,
     MAPPINGS,
 )
 from .hub import HubError, WledAnimHub
@@ -71,6 +78,30 @@ def _wled_devices(hass) -> list[SelectOptionDict]:
     return options
 
 
+async def _trouver_hub(hass) -> str | None:
+    """Premiere adresse ou le hub repond : celle des panneaux deja
+    configures d'abord, puis les adresses habituelles de l'add-on.
+    Tout est sonde en parallele, 3 s au plus."""
+    deja = [
+        str({**e.data, **e.options}.get(CONF_HUB_URL) or "").rstrip("/")
+        for e in hass.config_entries.async_entries(DOMAIN)
+    ]
+    candidats = list(dict.fromkeys([u for u in deja if u] + list(HUB_CANDIDATES)))
+    session = async_get_clientsession(hass)
+
+    async def sonder(url: str) -> str | None:
+        try:
+            panneaux = await WledAnimHub(session, url, timeout=3).panels()
+        except HubError:
+            return None
+        return url if isinstance(panneaux, list) else None
+
+    for url in await asyncio.gather(*(sonder(u) for u in candidats)):
+        if url:
+            return url
+    return None
+
+
 class WledAnimConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Ajout d'un panneau anime."""
 
@@ -79,31 +110,27 @@ class WledAnimConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._host: str | None = None
         self._label: str = ""
-        self._hub_url: str = DEFAULT_HUB_URL
+        self._hub_url: str | None = None
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Choix de l'appareil WLED et de l'adresse du hub."""
-        errors: dict[str, str] = {}
+        """Choix de l'appareil WLED. Le hub est trouve tout seul."""
+        if self._hub_url is None:
+            self._hub_url = await _trouver_hub(self.hass)
+            if self._hub_url is None:
+                return await self.async_step_hub()
+            _LOGGER.debug("Hub trouve sur %s", self._hub_url)
 
         if user_input is not None:
-            hub_url = user_input[CONF_HUB_URL].rstrip("/")
-            hub = WledAnimHub(async_get_clientsession(self.hass), hub_url)
-            try:
-                await hub.panels()
-            except HubError:
-                errors["base"] = "hub_injoignable"
-            else:
-                source = user_input[CONF_SOURCE]
-                self._hub_url = hub_url
-                if source == MANUAL:
-                    return await self.async_step_manual()
-                self._host = source
-                self._label = next(
-                    (o["label"].rsplit(" (", 1)[0] for o in _wled_devices(self.hass)
-                     if o["value"] == source),
-                    source,
-                )
-                return await self.async_step_panel()
+            source = user_input[CONF_SOURCE]
+            if source == MANUAL:
+                return await self.async_step_manual()
+            self._host = source
+            self._label = next(
+                (o["label"].rsplit(" (", 1)[0] for o in _wled_devices(self.hass)
+                 if o["value"] == source),
+                source,
+            )
+            return await self.async_step_panel()
 
         return self.async_show_form(
             step_id="user",
@@ -111,6 +138,25 @@ class WledAnimConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_SOURCE): SelectSelector(
                     SelectSelectorConfig(options=_wled_devices(self.hass),
                                          mode=SelectSelectorMode.DROPDOWN)),
+            }),
+        )
+
+    async def async_step_hub(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Le hub n'a repondu a aucune adresse habituelle : on la demande."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            url = user_input[CONF_HUB_URL].strip().rstrip("/")
+            try:
+                await WledAnimHub(async_get_clientsession(self.hass), url).panels()
+            except HubError:
+                errors["base"] = "hub_injoignable"
+            else:
+                self._hub_url = url
+                return await self.async_step_user()
+
+        return self.async_show_form(
+            step_id="hub",
+            data_schema=vol.Schema({
                 vol.Required(CONF_HUB_URL, default=DEFAULT_HUB_URL): TextSelector(),
             }),
             errors=errors,

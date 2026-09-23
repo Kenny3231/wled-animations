@@ -16,6 +16,18 @@ CONF_SOURCE = "source"
 
 DEFAULT_HUB_URL = "http://homeassistant.local:8099"
 
+# Ou chercher le hub quand on ajoute un panneau, dans l'ordre. L'add-on
+# tourne sur la machine de Home Assistant en reseau hote : 127.0.0.1
+# repond dans l'installation standard. Les noms de l'add-on (depot publie
+# ou copie locale) servent quand le coeur tourne dans un autre conteneur.
+HUB_CANDIDATES = (
+    "http://127.0.0.1:8099",
+    "http://f2a7da77-wled-hub:8099",
+    "http://local-wled-hub:8099",
+    "http://homeassistant.local:8099",
+    "http://homeassistant:8099",
+)
+
 # Notation de Kenny3231 : hauteur x largeur, comme sa dalle « 8*32 ».
 # Chaque geometrie aura son propre pack d'animations cote depot.
 GEOMETRIES = {
